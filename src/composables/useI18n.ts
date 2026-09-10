@@ -32,6 +32,7 @@ const translations = {
     restart: { zh: '重新开始', en: 'Restart' },
     settings: { zh: '设置', en: 'Settings' },
     quit: { zh: '退出游戏', en: 'Quit Game' },
+    leaderboard: { zh: '排行榜', en: 'Leaderboard' },
     deadHint: { zh: '选择重新开始或退出游戏', en: 'Choose restart or quit' },
     pausedHint: {
         zh: '按 ESC 或 P 关闭菜单继续游戏',

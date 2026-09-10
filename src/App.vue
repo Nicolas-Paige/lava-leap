@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import { useGame, IS_TOUCH_DEVICE } from './composables/useGame';
 import { useKeyboardInput } from './composables/useKeyboardInput';
 import { useTouchInput } from './composables/useTouchInput';
@@ -9,6 +9,9 @@ import Hud from './components/Hud.vue';
 import EscMenu from './components/EscMenu.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import TouchControls from './components/TouchControls.vue';
+import LeaderboardPanel from './components/LeaderboardPanel.vue';
+import { checkScore, submitScore, getPlayerName, setPlayerName } from './api/leaderboard';
+import { CHARACTERS } from './game/characters';
 import type { GamePhase } from './game/types';
 import type { GameMode } from './game/modes/types';
 import bgMusicUrl from '../assets/bg-music-8bit.wav';
@@ -83,6 +86,62 @@ function onSettingsBack() { game.closeSettings(); }
 function onQuit() { touchHandlers.resetDash(); game.quitGame(); }
 function onVolumeUpdate(v: number) { game.setVolume(v); }
 
+// ===== 排行榜 =====
+const showLeaderboard = ref(false);
+const leaderboardMode = ref('classic');
+function onOpenLeaderboard() { showLeaderboard.value = true; }
+function onCloseLeaderboard() { showLeaderboard.value = false; }
+
+// ===== 昵称输入（仅上榜时弹出） =====
+const showNameInput = ref(false);
+const playerName = ref('');
+const pendingScore = ref<{ mode: string; bestLayer: number; characterId: string } | null>(null);
+const pendingRank = ref<number>(0);
+
+function savePlayerName() {
+    const trimmed = playerName.value.trim();
+    if (!trimmed || !pendingScore.value) return;
+    setPlayerName(trimmed);
+    showNameInput.value = false;
+    // 提交成绩并打开排行榜
+    submitScore({ name: trimmed, ...pendingScore.value });
+    leaderboardMode.value = pendingScore.value.mode;
+    showLeaderboard.value = true;
+    pendingScore.value = null;
+}
+
+// 死亡时：检查是否上榜 → 上榜且没名字 → 弹输入框
+watch(() => game.phase.value, async (newPhase) => {
+    if (newPhase !== 'dead') return;
+    const mode = game.currentMode.value?.id || 'classic';
+    const layer = game.bestLayer.value;
+    if (layer <= 0) return;
+
+    // TODO: 部署后端后删除下面这行，恢复上方 checkScore 的 qualifies 检查
+    const qualifies = true;
+    // const { qualifies, currentRank } = await checkScore(mode, layer);
+
+    if (!qualifies) return;
+
+    // 上榜了
+    pendingRank.value = currentRank || 0;
+    const charId = CHARACTERS[game.characterIndex.value]?.id || 'unknown';
+    pendingScore.value = { mode, bestLayer: layer, characterId: charId };
+
+    const name = getPlayerName();
+    if (name) {
+        // 已有昵称，直接提交
+        submitScore({ name, bestLayer: layer, characterId: charId, mode });
+        leaderboardMode.value = mode;
+        showLeaderboard.value = true;
+        pendingScore.value = null;
+    } else {
+        // 没有昵称，弹输入框
+        playerName.value = '';
+        showNameInput.value = true;
+    }
+});
+
 // ===== 窗口适配 =====
 function onResize() { game.onResize(); }
 onMounted(() => {
@@ -141,7 +200,35 @@ const showGameUI = computed(() => !['idle', 'character-select'].includes(game.ph
             @settings="onSettings"
             @quit="onQuit"
             @close="closeMenu"
+            @leaderboard="onOpenLeaderboard"
         />
+
+        <!-- 排行榜 -->
+        <LeaderboardPanel
+            :visible="showLeaderboard"
+            :initial-mode="leaderboardMode"
+            @close="onCloseLeaderboard"
+        />
+
+        <!-- 昵称输入弹窗（上榜时才弹出） -->
+        <div v-if="showNameInput" class="name-input-overlay" @click.self="savePlayerName">
+            <div class="name-input-box">
+                <h3>🎉 恭喜上榜！</h3>
+                <p>你的成绩排在第 {{ pendingRank }} 名</p>
+                <input
+                    v-model="playerName"
+                    type="text"
+                    maxlength="20"
+                    placeholder="输入昵称..."
+                    class="name-input"
+                    @keyup.enter="savePlayerName"
+                    autofocus
+                />
+                <button class="name-confirm-btn" @click="savePlayerName" :disabled="!playerName.trim()">
+                    确认并上榜
+                </button>
+            </div>
+        </div>
 
         <!-- 设置面板 -->
         <SettingsPanel
@@ -178,5 +265,80 @@ canvas {
 
 #bgMusic {
     display: none;
+}
+
+/* 昵称输入弹窗 */
+.name-input-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.name-input-box {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 32px 28px;
+    text-align: center;
+    width: 90%;
+    max-width: 320px;
+}
+
+.name-input-box h3 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    color: #fbbf24;
+}
+
+.name-input-box p {
+    margin: 0 0 20px;
+    font-size: 14px;
+    color: #94a3b8;
+}
+
+.name-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-size: 16px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+.name-input:focus {
+    border-color: #fbbf24;
+}
+.name-input::placeholder {
+    color: #64748b;
+}
+
+.name-confirm-btn {
+    margin-top: 16px;
+    width: 100%;
+    padding: 12px 0;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #1a1a2e;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.name-confirm-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(251, 191, 36, 0.4);
+}
+.name-confirm-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 </style>

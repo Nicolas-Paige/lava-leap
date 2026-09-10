@@ -11,6 +11,7 @@ const emit = defineEmits<{
     settings: [];
     quit: [];
     close: [];
+    leaderboard: [];
 }>();
 
 const { tr } = useI18n();
@@ -28,6 +29,7 @@ function isMenuVisible(): boolean {
             <!-- 仅暂停时显示"继续游戏"按钮 -->
             <button v-if="phase === 'paused'" id="btnResume" @click="emit('close')">{{ tr('resume') }}</button>
             <button id="btnRestart" @click="emit('restart')">{{ tr('restart') }}</button>
+            <button id="btnLeaderboard" @click="emit('leaderboard')">{{ tr('leaderboard') || '排行榜' }}</button>
             <button id="btnSettings" @click="emit('settings')">{{ tr('settings') }}</button>
             <button id="btnQuit" @click="emit('quit')">{{ tr('quit') }}</button>
             <div class="hint">
@@ -112,6 +114,15 @@ function isMenuVisible(): boolean {
 #btnQuit:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(238, 90, 111, 0.4);
+}
+
+#btnLeaderboard {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #1a1a2e;
+}
+#btnLeaderboard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
 }
 
 #btnSettings {
