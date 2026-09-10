@@ -117,14 +117,15 @@ watch(() => game.phase.value, async (newPhase) => {
     const layer = game.bestLayer.value;
     if (layer <= 0) return;
 
-    // TODO: 部署后端后删除下面这行，恢复上方 checkScore 的 qualifies 检查
+    // TODO: 部署后端后恢复 checkScore 检查，删除下面两行
     const qualifies = true;
+    const currentRank = 0;
     // const { qualifies, currentRank } = await checkScore(mode, layer);
 
     if (!qualifies) return;
 
     // 上榜了
-    pendingRank.value = currentRank || 0;
+    pendingRank.value = currentRank;
     const charId = CHARACTERS[game.characterIndex.value]?.id || 'unknown';
     pendingScore.value = { mode, bestLayer: layer, characterId: charId };
 
