@@ -104,7 +104,7 @@ function savePlayerName() {
     setPlayerName(trimmed);
     showNameInput.value = false;
     // 提交成绩并打开排行榜
-    submitScore({ name: trimmed, ...pendingScore.value });
+    submitScore({ name: trimmed, layer: pendingScore.value.bestLayer, characterId: pendingScore.value.characterId, mode: pendingScore.value.mode });
     leaderboardMode.value = pendingScore.value.mode;
     showLeaderboard.value = true;
     pendingScore.value = null;
@@ -132,7 +132,7 @@ watch(() => game.phase.value, async (newPhase) => {
     const name = getPlayerName();
     if (name) {
         // 已有昵称，直接提交
-        submitScore({ name, bestLayer: layer, characterId: charId, mode });
+        submitScore({ name, layer, characterId: charId, mode });
         leaderboardMode.value = mode;
         showLeaderboard.value = true;
         pendingScore.value = null;

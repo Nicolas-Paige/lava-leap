@@ -91,7 +91,7 @@ function timeAgo(ts: number): string {
                     >
                         <span class="rank-medal">{{ medalFor(index) }}</span>
                         <span class="rank-name">{{ record.name }}</span>
-                        <span class="rank-layer">{{ record.bestLayer }} 层</span>
+                        <span class="rank-layer">{{ record.layer }} 层</span>
                         <span class="rank-time">{{ timeAgo(record.updatedAt) }}</span>
                     </div>
                 </div>

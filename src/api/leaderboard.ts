@@ -6,7 +6,7 @@ const API_BASE = '/api';
 
 export interface ScoreRecord {
     name: string;
-    bestLayer: number;
+    layer: number;
     characterId: string;
     totalGames: number;
     updatedAt: number;
@@ -64,7 +64,7 @@ export async function checkScore(mode: string, score: number): Promise<CheckResp
  */
 export async function submitScore(params: {
     name: string;
-    bestLayer: number;
+    layer: number;
     characterId: string;
     mode: string;
 }): Promise<boolean> {
@@ -75,7 +75,7 @@ export async function submitScore(params: {
             body: JSON.stringify({
                 playerId: getPlayerId(),
                 name: params.name,
-                layer: params.bestLayer,
+                layer: params.layer,
                 mode: params.mode,
                 characterId: params.characterId,
             }),
