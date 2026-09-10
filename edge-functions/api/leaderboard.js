@@ -14,7 +14,7 @@
  */
 
 export async function onRequest(context) {
-  const { request, env } = context;
+  const request = context.request;
   const url = new URL(request.url);
   const method = request.method;
 
@@ -47,7 +47,7 @@ export async function onRequest(context) {
     if (method === 'GET' && url.pathname.endsWith('/check')) {
       const mode = url.searchParams.get('mode') || 'classic';
       const layer = parseInt(url.searchParams.get('layer') || '0');
-      const data = await env.GAME_KV.get(`leaderboard:${mode}`, 'json');
+      const data = await GAME_KV.get(`leaderboard:${mode}`, 'json');
       const records = (data && data.records) || [];
 
       const qualifies = records.length < 10 || layer > (records[9] ? records[9].layer : 0);
@@ -62,7 +62,7 @@ export async function onRequest(context) {
     if (method === 'GET') {
       const mode = url.searchParams.get('mode') || 'classic';
       const limit = Math.min(parseInt(url.searchParams.get('limit') || '10'), 50);
-      const data = await env.GAME_KV.get(`leaderboard:${mode}`, 'json');
+      const data = await GAME_KV.get(`leaderboard:${mode}`, 'json');
       const records = ((data && data.records) || []).slice(0, limit);
       return json({ records, updatedAt: (data && data.updatedAt) || 0 });
     }
@@ -86,7 +86,7 @@ export async function onRequest(context) {
 
       // 读取现有排行榜
       const key = `leaderboard:${mode}`;
-      const data = await env.GAME_KV.get(key, 'json');
+      const data = await GAME_KV.get(key, 'json');
       const records = (data && data.records) || [];
 
       // 添加新记录
@@ -103,7 +103,7 @@ export async function onRequest(context) {
       const trimmed = records.slice(0, 100);
 
       // 写回 KV
-      await env.GAME_KV.put(key, JSON.stringify({
+      await GAME_KV.put(key, JSON.stringify({
         records: trimmed,
         updatedAt: Date.now(),
       }));
