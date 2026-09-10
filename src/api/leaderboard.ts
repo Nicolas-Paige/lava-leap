@@ -74,7 +74,10 @@ export async function submitScore(params: {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 playerId: getPlayerId(),
-                ...params,
+                name: params.name,
+                layer: params.bestLayer,
+                mode: params.mode,
+                characterId: params.characterId,
             }),
         });
         return res.ok;
