@@ -55,6 +55,7 @@ export function useGame(options: UseGameOptions) {
     let walkAction: any = null, runAction: any = null, idleAction: any = null, jumpAction: any = null, deathAction: any = null;
     let currentAnimation = 'idle';
     let modelLoaded = false;
+    let loadGeneration = 0;  // 模型加载代次，防止旧回调污染场景
 
     // 当前选中的角色
     let selectedCharacterId = DEFAULT_CHARACTER_ID;
@@ -392,10 +393,16 @@ export function useGame(options: UseGameOptions) {
         deathMaterials = [];
         modelLoaded = false;
 
+        // 递增代次，使旧的加载回调失效
+        const gen = ++loadGeneration;
+
         const loader = new GLTFLoader();
         loader.load(
             character.modelUrl,
             (gltf: any) => {
+                // 如果代次不匹配，说明有新的加载请求，忽略这次回调
+                if (gen !== loadGeneration) return;
+
                 const model = gltf.scene;
                 model.scale.set(character.scale, character.scale, character.scale);
                 model.castShadow = true;
@@ -452,11 +459,13 @@ export function useGame(options: UseGameOptions) {
                 onModelReady();
             },
             (progress: { loaded: number; total: number }) => {
+                if (gen !== loadGeneration) return;  // 忽略过期进度
                 if (progress.total) {
                     loadingProgress.value = Math.min(99, Math.floor((progress.loaded / progress.total) * 100));
                 }
             },
             (error: unknown) => {
+                if (gen !== loadGeneration) return;  // 忽略过期错误
                 console.error('模型加载失败：', error);
                 loadError.value = '加载失败，点击重试';
             },
