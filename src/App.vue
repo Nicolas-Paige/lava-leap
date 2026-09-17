@@ -212,24 +212,28 @@ const showGameUI = computed(() => !['idle', 'character-select'].includes(game.ph
         />
 
         <!-- 昵称输入弹窗（上榜时才弹出） -->
-        <div v-if="showNameInput" class="name-input-overlay" @click.self="savePlayerName">
-            <div class="name-input-box">
-                <h3>🎉 恭喜上榜！</h3>
-                <p>你的成绩排在第 {{ pendingRank }} 名</p>
-                <input
-                    v-model="playerName"
-                    type="text"
-                    maxlength="20"
-                    placeholder="输入昵称..."
-                    class="name-input"
-                    @keyup.enter="savePlayerName"
-                    autofocus
-                />
-                <button class="name-confirm-btn" @click="savePlayerName" :disabled="!playerName.trim()">
-                    确认并上榜
-                </button>
+        <Transition name="ui-fade">
+            <div v-if="showNameInput" class="name-input-overlay" @click.self="savePlayerName">
+                <div class="name-input-card">
+                    <div class="name-card-glow"></div>
+                    <h3 class="name-title">🎉 恭喜上榜！</h3>
+                    <p class="name-desc">你的成绩排在第 <span class="rank-num">{{ pendingRank }}</span> 名</p>
+                    <input
+                        v-model="playerName"
+                        type="text"
+                        maxlength="20"
+                        placeholder="输入昵称..."
+                        class="name-input"
+                        @keyup.enter="savePlayerName"
+                        autofocus
+                    />
+                    <button class="name-confirm-btn" @click="savePlayerName" :disabled="!playerName.trim()">
+                        <span class="btn-icon">🏆</span>
+                        确认并上榜
+                    </button>
+                </div>
             </div>
-        </div>
+        </Transition>
 
         <!-- 设置面板 -->
         <SettingsPanel
@@ -272,74 +276,117 @@ canvas {
 .name-input-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(10, 10, 30, 0.8);
     z-index: 3000;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(12px);
 }
 
-.name-input-box {
-    background: rgba(15, 23, 42, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 16px;
+.name-input-card {
+    background: var(--ui-bg-card);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-lg);
     padding: 32px 28px;
     text-align: center;
     width: 90%;
-    max-width: 320px;
+    max-width: 340px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--ui-shadow);
+    animation: ui-card-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.name-input-box h3 {
+.name-card-glow {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 100px;
+    background: radial-gradient(ellipse, rgba(251, 191, 36, 0.12), transparent 70%);
+    pointer-events: none;
+}
+
+@keyframes ui-card-in {
+    from { opacity: 0; transform: translateY(16px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.name-title {
     margin: 0 0 8px;
-    font-size: 22px;
-    color: #fbbf24;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ui-accent-gold);
+    text-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
 }
 
-.name-input-box p {
-    margin: 0 0 20px;
+.name-desc {
+    margin: 0 0 24px;
     font-size: 14px;
-    color: #94a3b8;
+    color: var(--ui-text-dim);
+}
+
+.rank-num {
+    color: var(--ui-accent-gold);
+    font-weight: 700;
+    font-size: 16px;
 }
 
 .name-input {
     width: 100%;
     padding: 12px 16px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--ui-radius-sm);
+    border: 1px solid var(--ui-border);
     background: rgba(255, 255, 255, 0.06);
     color: #fff;
     font-size: 16px;
     outline: none;
     box-sizing: border-box;
-    transition: border-color 0.2s;
+    transition: border-color var(--ui-transition), box-shadow var(--ui-transition);
+    backdrop-filter: blur(6px);
 }
 .name-input:focus {
-    border-color: #fbbf24;
+    border-color: var(--ui-accent-gold);
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
 }
 .name-input::placeholder {
-    color: #64748b;
+    color: var(--ui-text-muted);
 }
 
 .name-confirm-btn {
-    margin-top: 16px;
+    margin-top: 20px;
     width: 100%;
-    padding: 12px 0;
-    border: none;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    color: #1a1a2e;
+    padding: 14px 0;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: var(--ui-radius-sm);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.08));
+    color: var(--ui-accent-gold);
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--ui-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    backdrop-filter: blur(8px);
 }
 .name-confirm-btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(251, 191, 36, 0.4);
+    box-shadow: 0 8px 25px rgba(251, 191, 36, 0.2);
+    border-color: rgba(251, 191, 36, 0.5);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(245, 158, 11, 0.12));
+}
+.name-confirm-btn:active:not(:disabled) {
+    transform: scale(0.98);
 }
 .name-confirm-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
+}
+.name-confirm-btn .btn-icon {
+    font-size: 16px;
 }
 </style>
