@@ -8,9 +8,10 @@
  * 命名空间：Ranking_list
  *
  * 路由：
- *   GET  /api/leaderboard?mode=classic|inferno&limit=10  → 获取排行榜
- *   GET  /api/leaderboard/check?mode=classic|inferno&layer=1  → 检查是否上榜
+ *   GET  /api/leaderboard?mode=classic|inferno&limit=20  → 获取排行榜
  *   POST /api/leaderboard  → 上报成绩（同一玩家可多次上榜）
+ *
+ *   check 接口见: edge-functions/api/leaderboard/check.ts → /api/leaderboard/check
  */
 
 const MAX_LEADERBOARD_SIZE = 20;
@@ -46,32 +47,6 @@ export async function onRequest(context) {
     });
 
   try {
-    // ── GET /api/leaderboard/check?mode=xxx&layer=123 ──
-    // 用 searchParams.has('layer') 来判断是否是 check 请求（比 pathname 更可靠）
-    if (method === 'GET' && url.searchParams.has('layer')) {
-      const mode = url.searchParams.get('mode') || 'classic';
-      const layer = parseInt(url.searchParams.get('layer') || '0');
-
-      if (!layer || layer <= 0) {
-        return json({ qualifies: false, currentRank: -1, total: 0 });
-      }
-
-      const data = await GAME_KV.get(`leaderboard:${mode}`, 'json');
-      const records = (data && data.records) || [];
-
-      // 上榜条件：排行榜未满 20 条，或层数超过第 20 名
-      const qualifies = records.length < MAX_LEADERBOARD_SIZE || layer > (records[MAX_LEADERBOARD_SIZE - 1] ? records[MAX_LEADERBOARD_SIZE - 1].layer : 0);
-
-      // 预估排名（仅上榜时有意义）
-      let currentRank = -1;
-      if (qualifies) {
-        currentRank = records.findIndex(r => layer > r.layer);
-        currentRank = currentRank === -1 ? records.length + 1 : currentRank + 1;
-      }
-
-      return json({ qualifies, currentRank, total: records.length });
-    }
-
     // ── GET /api/leaderboard?mode=xxx&limit=10 ──
     if (method === 'GET') {
       const mode = url.searchParams.get('mode') || 'classic';

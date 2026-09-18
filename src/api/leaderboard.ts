@@ -58,7 +58,7 @@ export function setPlayerName(name: string): void {
  */
 export async function checkScore(mode: string, layer: number): Promise<CheckResponse> {
     try {
-        const res = await fetch(`${API_BASE}/leaderboard/check?mode=${mode}&layer=${layer}`);
+        const res = await fetch(`${API_BASE}/leaderboard?mode=${mode}&layer=${layer}`);
         if (!res.ok) return { qualifies: false, currentRank: -1, total: 0 };
         return await res.json();
     } catch {
