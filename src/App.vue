@@ -98,30 +98,33 @@ const playerName = ref('');
 const pendingScore = ref<{ mode: string; bestLayer: number; characterId: string } | null>(null);
 const pendingRank = ref<number>(0);
 
-function savePlayerName() {
+async function savePlayerName() {
     const trimmed = playerName.value.trim();
     if (!trimmed || !pendingScore.value) return;
     setPlayerName(trimmed);
     showNameInput.value = false;
     // 提交成绩并打开排行榜
-    submitScore({ name: trimmed, layer: pendingScore.value.bestLayer, characterId: pendingScore.value.characterId, mode: pendingScore.value.mode });
+    const result = await submitScore({
+        name: trimmed,
+        layer: pendingScore.value.bestLayer,
+        characterId: pendingScore.value.characterId,
+        mode: pendingScore.value.mode,
+    });
+    if (result.rank > 0) pendingRank.value = result.rank;
     leaderboardMode.value = pendingScore.value.mode;
     showLeaderboard.value = true;
     pendingScore.value = null;
 }
 
-// 死亡时：检查是否上榜 → 上榜且没名字 → 弹输入框
+// 死亡时：check是否上榜 → 上榜则提交/弹输入框
 watch(() => game.phase.value, async (newPhase) => {
     if (newPhase !== 'dead') return;
     const mode = game.currentMode.value?.id || 'classic';
     const layer = game.bestLayer.value;
     if (layer <= 0) return;
 
-    // TODO: 部署后端后恢复 checkScore 检查，删除下面两行
-    const qualifies = true;
-    const currentRank = 0;
-    // const { qualifies, currentRank } = await checkScore(mode, layer);
-
+    // 先检查是否上榜
+    const { qualifies, currentRank } = await checkScore(mode, layer);
     if (!qualifies) return;
 
     // 上榜了
@@ -132,7 +135,8 @@ watch(() => game.phase.value, async (newPhase) => {
     const name = getPlayerName();
     if (name) {
         // 已有昵称，直接提交
-        submitScore({ name, layer, characterId: charId, mode });
+        const result = await submitScore({ name, layer, characterId: charId, mode });
+        if (result.rank > 0) pendingRank.value = result.rank;
         leaderboardMode.value = mode;
         showLeaderboard.value = true;
         pendingScore.value = null;

@@ -8,8 +8,8 @@ export interface ScoreRecord {
     name: string;
     layer: number;
     characterId: string;
-    totalGames: number;
-    updatedAt: number;
+    playerId?: string;
+    timestamp: number;
 }
 
 export interface LeaderboardResponse {
@@ -19,7 +19,14 @@ export interface LeaderboardResponse {
 
 export interface CheckResponse {
     qualifies: boolean;
-    currentRank?: number;
+    currentRank: number;
+    total: number;
+}
+
+export interface SubmitResponse {
+    success: boolean;
+    rank: number;
+    total: number;
 }
 
 /**
@@ -49,40 +56,40 @@ export function setPlayerName(name: string): void {
 /**
  * 检查分数是否上榜
  */
-export async function checkScore(mode: string, score: number): Promise<CheckResponse> {
+export async function checkScore(mode: string, layer: number): Promise<CheckResponse> {
     try {
-        const res = await fetch(`${API_BASE}/leaderboard/check?mode=${mode}&score=${score}`);
-        if (!res.ok) return { qualifies: false };
+        const res = await fetch(`${API_BASE}/leaderboard/check?mode=${mode}&layer=${layer}`);
+        if (!res.ok) return { qualifies: false, currentRank: -1, total: 0 };
         return await res.json();
     } catch {
-        return { qualifies: false };
+        return { qualifies: false, currentRank: -1, total: 0 };
     }
 }
 
 /**
- * 上报成绩
+ * 上报成绩（同一玩家可多次上榜）
  */
 export async function submitScore(params: {
     name: string;
     layer: number;
     characterId: string;
     mode: string;
-}): Promise<boolean> {
+}): Promise<SubmitResponse> {
     try {
         const res = await fetch(`${API_BASE}/leaderboard`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                playerId: getPlayerId(),
                 name: params.name,
                 layer: params.layer,
                 mode: params.mode,
                 characterId: params.characterId,
             }),
         });
-        return res.ok;
+        if (!res.ok) return { success: false, rank: 0, total: 0 };
+        return await res.json();
     } catch {
-        return false;
+        return { success: false, rank: 0, total: 0 };
     }
 }
 

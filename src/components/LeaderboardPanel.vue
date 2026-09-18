@@ -17,6 +17,7 @@ const { tr } = useI18n();
 const activeMode = ref(props.initialMode || 'classic');
 const records = ref<ScoreRecord[]>([]);
 const loading = ref(false);
+let loadGeneration = 0; // 防止竞态：旧请求的结果不会覆盖新请求
 
 const MODES = [
     { id: 'classic', label: '经典模式', icon: '🔥' },
@@ -25,19 +26,31 @@ const MODES = [
 
 async function loadLeaderboard() {
     loading.value = true;
+    const gen = ++loadGeneration; // 递增代次，用于竞态判断
     try {
-        const data = await fetchLeaderboard(activeMode.value, 30);
+        const data = await fetchLeaderboard(activeMode.value, 20);
+        // 如果在这次请求期间又触发了新的加载，丢弃旧结果
+        if (gen !== loadGeneration) return;
         records.value = data.records;
     } catch {
+        if (gen !== loadGeneration) return;
         records.value = [];
     } finally {
-        loading.value = false;
+        if (gen === loadGeneration) loading.value = false;
     }
 }
 
-// 打开时加载、切换模式时重新加载
-watch(() => props.visible, (v) => { if (v) loadLeaderboard(); });
-watch(activeMode, () => loadLeaderboard());
+// 打开时加载，同时同步 initialMode 变化
+watch(() => props.visible, (v) => {
+    if (v) {
+        if (props.initialMode && props.initialMode !== activeMode.value) {
+            activeMode.value = props.initialMode;
+        }
+        loadLeaderboard();
+    }
+});
+// 切换模式时重新加载
+watch(activeMode, () => { if (props.visible) loadLeaderboard(); });
 
 function medalFor(index: number): string {
     if (index === 0) return '🥇';
@@ -109,7 +122,7 @@ function timeAgo(ts: number): string {
                                 </div>
                                 <div class="rank-info">
                                     <span class="rank-name">{{ record.name }}</span>
-                                    <span class="rank-time">{{ timeAgo(record.updatedAt) }}</span>
+                                    <span class="rank-time">{{ timeAgo(record.timestamp) }}</span>
                                 </div>
                                 <div class="rank-layer">
                                     <span class="layer-number">{{ record.layer }}</span>
@@ -125,6 +138,9 @@ function timeAgo(ts: number): string {
                         <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
                         {{ loading ? '刷新中...' : '刷新' }}
                     </button>
+                    <div v-if="records.length > 0" class="record-count">
+                        共 {{ records.length }} 条记录
+                    </div>
                 </div>
             </div>
         </div>
@@ -443,7 +459,14 @@ function timeAgo(ts: number): string {
     padding: 16px 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.record-count {
+    color: #475569;
+    font-size: 12px;
 }
 
 .refresh-btn {
