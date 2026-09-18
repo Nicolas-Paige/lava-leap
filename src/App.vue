@@ -116,7 +116,7 @@ async function savePlayerName() {
     pendingScore.value = null;
 }
 
-// 死亡时：check是否上榜 → 上榜则提交/弹输入框
+// 死亡时：check是否上榜 → 上榜则弹窗（回填昵称）→ 用户确认后提交
 watch(() => game.phase.value, async (newPhase) => {
     if (newPhase !== 'dead') return;
     const mode = game.currentMode.value?.id || 'classic';
@@ -127,24 +127,12 @@ watch(() => game.phase.value, async (newPhase) => {
     const { qualifies, currentRank } = await checkScore(mode, layer);
     if (!qualifies) return;
 
-    // 上榜了
+    // 上榜了，弹昵称输入框（回填已有昵称）
     pendingRank.value = currentRank;
     const charId = CHARACTERS[game.characterIndex.value]?.id || 'unknown';
     pendingScore.value = { mode, bestLayer: layer, characterId: charId };
-
-    const name = getPlayerName();
-    if (name) {
-        // 已有昵称，直接提交
-        const result = await submitScore({ name, layer, characterId: charId, mode });
-        if (result.rank > 0) pendingRank.value = result.rank;
-        leaderboardMode.value = mode;
-        showLeaderboard.value = true;
-        pendingScore.value = null;
-    } else {
-        // 没有昵称，弹输入框
-        playerName.value = '';
-        showNameInput.value = true;
-    }
+    playerName.value = getPlayerName();
+    showNameInput.value = true;
 });
 
 // ===== 窗口适配 =====
