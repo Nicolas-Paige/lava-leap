@@ -1,7 +1,7 @@
 /**
  * EdgeOne Makers Edge Function - 排行榜 API
  *
- * 文件路径: edge-functions/api/leaderboard.js
+ * 文件路径: edge-functions/api/leaderboard.ts
  * 自动映射路由: /api/leaderboard
  *
  * KV 绑定变量名：GAME_KV

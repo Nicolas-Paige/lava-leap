@@ -14,6 +14,7 @@
 - [移动端适配](#移动端适配)
 - [岩浆系统](#岩浆系统)
 - [平台与材质](#平台与材质)
+- [排行榜系统](#排行榜系统)
 - [设置面板](#设置面板)
 - [项目结构](#项目结构)
 - [技术栈](#技术栈)
@@ -37,6 +38,7 @@
 - **死亡菜单**：被岩浆烧死后弹出菜单，可选择重新开始或退出游戏
 - **背景音乐**：进入游戏自动播放，退出游戏自动暂停（循环播放）
 - **设置面板**：暂停菜单中可调节音量、切换语言
+- **排行榜系统**：支持经典 / 地狱双模式排行榜（各保留前 20 名），死亡时自动校验是否上榜，同一玩家可多次上榜；基于 EdgeOne KV 存储，提供 check / submit / list 三个 API
 - **层数记录**：实时显示当前层与历史最高层
 - **移动端适配**：自动检测触控设备，提供动态浮动摇杆 / 跳跃 / 冲刺切换 / 视角切换 / 暂停按钮，竖屏旋转提示
 
@@ -154,6 +156,54 @@ npm run preview
 
 实现位于 [src/game/textures.ts](file:///d:/work/test/jump-robot/src/game/textures.ts)，调色板定义在 [src/game/constants.ts](file:///d:/work/test/jump-robot/src/game/constants.ts)。
 
+## 排行榜系统
+
+支持经典 / 地狱双模式独立排行榜，基于 EdgeOne Makers Edge Function + KV 存储实现。
+
+### 功能
+
+- **双模式排行榜**：经典模式（classic）和地狱模式（inferno）各自独立保存前 20 名
+- **死亡自动校验**：玩家死亡时自动调用 check 接口判断是否上榜，上榜后自动提交成绩
+- **昵称系统**：首次上榜弹出昵称输入框，后续自动使用已保存的昵称
+- **同一玩家多次上榜**：同一玩家在同一模式下可以占据多个排名位置
+
+### API 接口
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/leaderboard/check?mode=classic&layer=12` | 检查指定层数是否上榜，返回 `{ qualifies, currentRank, total }` |
+| `POST` | `/api/leaderboard` | 提交成绩，Body: `{ name, layer, mode, characterId }`，返回 `{ success, rank, total }` |
+| `GET` | `/api/leaderboard?mode=classic&limit=20` | 获取排行榜列表，返回 `{ records, updatedAt }` |
+
+### Edge Function 文件结构
+
+```
+edge-functions/
+  api/
+    leaderboard.ts              → /api/leaderboard          (GET 列表 + POST 提交)
+    leaderboard/
+      check.ts                  → /api/leaderboard/check    (GET 校验)
+```
+
+### 前端文件
+
+- `src/api/leaderboard.ts` — API 客户端（checkScore / submitScore / fetchLeaderboard）
+- `src/components/LeaderboardPanel.vue` — 排行榜面板组件（模式切换、排名列表、刷新）
+- `src/App.vue` — 死亡流程中的上榜校验与提交逻辑
+
+### KV 存储结构
+
+KV key: `leaderboard:{mode}`（如 `leaderboard:classic`），value 为 JSON：
+
+```json
+{
+  "records": [
+    { "name": "玩家昵称", "layer": 15, "mode": "classic", "characterId": "robot", "timestamp": 1700000000000 }
+  ],
+  "updatedAt": 1700000000000
+}
+```
+
 ## 设置面板
 
 暂停菜单中点击"设置"可进入设置面板，目前支持：
@@ -177,6 +227,11 @@ lava-leap/
 ├── vite.config.ts              # Vite 配置
 ├── tsconfig.json               # TypeScript 配置
 ├── tsconfig.node.json
+├── edge-functions/             # EdgeOne Edge Functions（排行榜后端）
+│   └── api/
+│       ├── leaderboard.ts      # /api/leaderboard（GET 列表 + POST 提交）
+│       └── leaderboard/
+│           └── check.ts        # /api/leaderboard/check（GET 校验）
 ├── assets/                     # 游戏资源
 │   └── bg-music.mp4            # 背景音乐
 ├── models/                     # 角色模型
@@ -192,6 +247,8 @@ lava-leap/
 │   ├── App.vue                 # 顶层组件（canvas + audio + 子组件编排）
 │   ├── styles.css              # 全局样式
 │   ├── shims.d.ts              # TS 模块声明（.glb / .mp4 等）
+│   ├── api/                    # API 客户端
+│   │   └── leaderboard.ts      # 排行榜 API（checkScore / submitScore / fetchLeaderboard）
 │   ├── game/                   # 引擎层（纯 TS，无 Vue 依赖，可独立复用）
 │   │   ├── constants.ts        # 所有常量 + MC 调色板 + 第一人称参数
 │   │   ├── types.ts            # Platform / InputKeys / GamePhase / CameraMode 等类型
@@ -217,6 +274,7 @@ lava-leap/
 │       ├── CharacterSelect.vue # 角色选择页面（3D展示 + 左右切换）
 │       ├── Hud.vue             # 层数显示 + 操作提示
 │       ├── EscMenu.vue         # 暂停 / 死亡菜单
+│       ├── LeaderboardPanel.vue# 排行榜面板（双模式切换 + 排名列表）
 │       ├── SettingsPanel.vue    # 设置面板
 │       └── TouchControls.vue    # 移动端虚拟摇杆 / 按钮
 ├── LICENSE                     # Apache License 2.0
@@ -309,6 +367,7 @@ A 3D jumping mini-game built with Three.js + Vue 3. Pick your favorite character
 - [Mobile Adaptation](#mobile-adaptation)
 - [Lava System](#lava-system)
 - [Platforms & Materials](#platforms--materials)
+- [Leaderboard](#leaderboard)
 - [Settings Panel](#settings-panel-1)
 - [Project Structure](#project-structure-1)
 - [Tech Stack](#tech-stack-1)
@@ -332,6 +391,7 @@ A 3D jumping mini-game built with Three.js + Vue 3. Pick your favorite character
 - **Death menu**: A menu pops up after being burned by lava, offering options to restart or quit the game
 - **Background music**: Automatically plays when entering the game, pauses when exiting (loops)
 - **Settings panel**: Adjust volume and toggle language from the pause menu
+- **Leaderboard system**: Dual-mode leaderboard (classic / inferno, top 20 each), auto-check on death, same player can appear multiple times; powered by EdgeOne KV with check / submit / list APIs
 - **Layer tracking**: Real-time display of current layer and historical highest layer
 - **Mobile adaptation**: Auto-detects touch devices, provides dynamic floating joystick / jump / dash toggle / view toggle / pause buttons, portrait orientation hint
 
@@ -449,6 +509,54 @@ Platform tops use procedurally generated 16×16 pixel textures to simulate a Min
 
 Implementation in [src/game/textures.ts](file:///d:/work/test/jump-robot/src/game/textures.ts); palette defined in [src/game/constants.ts](file:///d:/work/test/jump-robot/src/game/constants.ts).
 
+## Leaderboard
+
+Dual-mode leaderboard (classic / inferno) powered by EdgeOne Makers Edge Functions + KV storage.
+
+### Features
+
+- **Dual-mode**: Classic and inferno modes each maintain independent top-20 rankings
+- **Auto-check on death**: Automatically calls the check API to determine if the score qualifies, then submits
+- **Nickname system**: First-time qualifier prompts for a nickname; subsequent submissions use the saved name
+- **Multiple entries**: Same player can occupy multiple spots on the same mode's leaderboard
+
+### API Endpoints
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/leaderboard/check?mode=classic&layer=12` | Check if a layer score qualifies, returns `{ qualifies, currentRank, total }` |
+| `POST` | `/api/leaderboard` | Submit score, Body: `{ name, layer, mode, characterId }`, returns `{ success, rank, total }` |
+| `GET` | `/api/leaderboard?mode=classic&limit=20` | Fetch leaderboard, returns `{ records, updatedAt }` |
+
+### Edge Function File Structure
+
+```
+edge-functions/
+  api/
+    leaderboard.ts              → /api/leaderboard          (GET list + POST submit)
+    leaderboard/
+      check.ts                  → /api/leaderboard/check    (GET check)
+```
+
+### Frontend Files
+
+- `src/api/leaderboard.ts` — API client (checkScore / submitScore / fetchLeaderboard)
+- `src/components/LeaderboardPanel.vue` — Leaderboard panel component (mode tabs, ranking list, refresh)
+- `src/App.vue` — Death flow: qualification check and score submission
+
+### KV Storage Structure
+
+KV key: `leaderboard:{mode}` (e.g. `leaderboard:classic`), value is JSON:
+
+```json
+{
+  "records": [
+    { "name": "PlayerName", "layer": 15, "mode": "classic", "characterId": "robot", "timestamp": 1700000000000 }
+  ],
+  "updatedAt": 1700000000000
+}
+```
+
 ## Settings Panel
 
 Click "Settings" in the pause menu to open the settings panel. Currently supports:
@@ -472,6 +580,11 @@ lava-leap/
 ├── vite.config.ts              # Vite config
 ├── tsconfig.json               # TypeScript config
 ├── tsconfig.node.json
+├── edge-functions/             # EdgeOne Edge Functions (leaderboard backend)
+│   └── api/
+│       ├── leaderboard.ts      # /api/leaderboard (GET list + POST submit)
+│       └── leaderboard/
+│           └── check.ts        # /api/leaderboard/check (GET check)
 ├── assets/                     # Game assets
 │   └── bg-music.mp4            # Background music
 ├── models/                     # Character models
@@ -487,6 +600,8 @@ lava-leap/
 │   ├── App.vue                 # Top-level component (canvas + audio + child orchestration)
 │   ├── styles.css              # Global styles
 │   ├── shims.d.ts              # TS module declarations (.glb / .mp4, etc.)
+│   ├── api/                    # API clients
+│   │   └── leaderboard.ts      # Leaderboard API (checkScore / submitScore / fetchLeaderboard)
 │   ├── game/                   # Engine layer (pure TS, no Vue dependency, independently reusable)
 │   │   ├── constants.ts        # All constants + MC palette + first-person params
 │   │   ├── types.ts            # Platform / InputKeys / GamePhase / CameraMode types
@@ -512,6 +627,7 @@ lava-leap/
 │       ├── CharacterSelect.vue # Character select screen (3D preview + left/right switch)
 │       ├── Hud.vue             # Layer display + controls hint
 │       ├── EscMenu.vue         # Pause / death menu
+│       ├── LeaderboardPanel.vue# Leaderboard panel (dual-mode tabs + ranking list)
 │       ├── SettingsPanel.vue    # Settings panel
 │       └── TouchControls.vue    # Mobile virtual joystick / buttons
 ├── LICENSE                     # Apache License 2.0
