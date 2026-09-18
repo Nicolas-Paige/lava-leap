@@ -47,8 +47,8 @@ export async function onRequest(context) {
 
   try {
     // ── GET /api/leaderboard/check?mode=xxx&layer=123 ──
-    // 检查指定层数是否有资格上榜，并返回预估排名
-    if (method === 'GET' && url.pathname.endsWith('/check')) {
+    // 用 searchParams.has('layer') 来判断是否是 check 请求（比 pathname 更可靠）
+    if (method === 'GET' && url.searchParams.has('layer')) {
       const mode = url.searchParams.get('mode') || 'classic';
       const layer = parseInt(url.searchParams.get('layer') || '0');
 
