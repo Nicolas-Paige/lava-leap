@@ -165,11 +165,12 @@ export class PlatformSystem {
         }
     }
 
-    // 初始化 0~5 层
+    // 初始化 0~5 层（与动态生成共用内容刷新回调）
     initInitialLayers(): void {
         for (let l = 0; l <= 5; l++) {
             this.generateLayer(l);
             this.highestGeneratedLayer = l;
+            if (l > 0) this.onLayerGenerated?.(l);
         }
     }
 

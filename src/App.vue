@@ -248,137 +248,147 @@ const showGameUI = computed(() => !['idle', 'character-select'].includes(game.ph
 
 <style scoped>
 .app {
-    width: 100vw;
-    height: 100vh;
     position: relative;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
 }
 
 canvas {
+    display: block;
     width: 100%;
     height: 100%;
-    display: block;
 }
 
 #bgMusic {
     display: none;
 }
 
-/* 昵称输入弹窗 */
 .name-input-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(10, 10, 30, 0.8);
     z-index: 3000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(12px);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    padding: 1rem;
+    background: var(--ui-bg-overlay);
+    backdrop-filter: var(--ui-blur);
 }
 
 .name-input-card {
-    background: var(--ui-bg-card);
+    position: relative;
+    width: min(22.5rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    padding: 1.5rem;
+    overflow: hidden;
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-lg);
-    padding: 32px 28px;
-    text-align: center;
-    width: 90%;
-    max-width: 340px;
-    position: relative;
-    overflow: hidden;
+    background: var(--ui-bg-card);
     box-shadow: var(--ui-shadow);
-    animation: ui-card-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-align: center;
+    animation: name-card-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .name-card-glow {
     position: absolute;
     top: 0;
     left: 50%;
+    width: 13.75rem;
+    height: 6.25rem;
     transform: translateX(-50%);
-    width: 200px;
-    height: 100px;
-    background: radial-gradient(ellipse, rgba(251, 191, 36, 0.12), transparent 70%);
+    background: radial-gradient(ellipse, rgba(251, 191, 36, 0.14), transparent 70%);
     pointer-events: none;
 }
 
-@keyframes ui-card-in {
-    from { opacity: 0; transform: translateY(16px) scale(0.96); }
+@keyframes name-card-in {
+    from { opacity: 0; transform: translateY(14px) scale(0.97); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .name-title {
-    margin: 0 0 8px;
-    font-size: 24px;
-    font-weight: 700;
+    position: relative;
+    margin: 0 0 0.5rem;
     color: var(--ui-accent-gold);
-    text-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.25;
 }
 
 .name-desc {
-    margin: 0 0 24px;
-    font-size: 14px;
+    position: relative;
+    margin: 0 0 1.25rem;
     color: var(--ui-text-dim);
+    font-size: 0.9375rem;
+    line-height: 1.5;
 }
 
 .rank-num {
     color: var(--ui-accent-gold);
     font-weight: 700;
-    font-size: 16px;
 }
 
 .name-input {
+    position: relative;
     width: 100%;
-    padding: 12px 16px;
-    border-radius: var(--ui-radius-sm);
+    min-height: var(--ui-control-height-compact);
+    padding: 0.625rem 0.875rem;
     border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-sm);
+    outline: none;
     background: rgba(255, 255, 255, 0.06);
     color: #fff;
-    font-size: 16px;
-    outline: none;
-    box-sizing: border-box;
+    font-size: 1rem;
     transition: border-color var(--ui-transition), box-shadow var(--ui-transition);
-    backdrop-filter: blur(6px);
 }
+
 .name-input:focus {
     border-color: var(--ui-accent-gold);
     box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
 }
+
 .name-input::placeholder {
     color: var(--ui-text-muted);
 }
 
 .name-confirm-btn {
-    margin-top: 20px;
-    width: 100%;
-    padding: 14px 0;
-    border: 1px solid rgba(251, 191, 36, 0.3);
-    border-radius: var(--ui-radius-sm);
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.08));
-    color: var(--ui-accent-gold);
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--ui-transition);
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: var(--ui-control-height);
+    margin-top: 1rem;
+    padding: var(--ui-control-y) 0.875rem;
+    border: 1px solid rgba(251, 191, 36, 0.32);
+    border-radius: var(--ui-radius-sm);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(245, 158, 11, 0.08));
+    color: var(--ui-accent-gold);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--ui-transition);
     backdrop-filter: blur(8px);
 }
+
 .name-confirm-btn:hover:not(:disabled) {
     transform: translateY(-2px);
+    border-color: rgba(251, 191, 36, 0.55);
     box-shadow: 0 8px 25px rgba(251, 191, 36, 0.2);
-    border-color: rgba(251, 191, 36, 0.5);
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(245, 158, 11, 0.12));
 }
+
 .name-confirm-btn:active:not(:disabled) {
     transform: scale(0.98);
 }
+
 .name-confirm-btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
 }
-.name-confirm-btn .btn-icon {
-    font-size: 16px;
+
+.btn-icon {
+    font-size: 1rem;
 }
 </style>

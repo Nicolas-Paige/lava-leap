@@ -79,7 +79,7 @@ onUnmounted(() => {
     >
         <!-- 顶部标题 + 返回 -->
         <div class="cs-top">
-            <button class="cs-back" @click="emit('back')" title="返回">‹</button>
+            <button class="cs-back" @click="emit('back')" title="返回">←</button>
             <h2 class="cs-title">选择角色</h2>
             <div class="cs-placeholder"></div>
         </div>
@@ -120,158 +120,206 @@ onUnmounted(() => {
     z-index: 1000;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
     color: #fff;
-    /* 半透明渐变背景，中间透出3D模型 */
     background: linear-gradient(
         to bottom,
-        rgba(10, 15, 30, 0.85) 0%,
-        rgba(10, 15, 30, 0.2) 25%,
-        rgba(10, 15, 30, 0.2) 65%,
-        rgba(10, 15, 30, 0.9) 100%
+        rgba(10, 15, 30, 0.88) 0%,
+        rgba(10, 15, 30, 0.2) 26%,
+        rgba(10, 15, 30, 0.2) 64%,
+        rgba(10, 15, 30, 0.92) 100%
     );
-    overflow: hidden;
     touch-action: pan-y;
 }
 
-/* 顶部 */
 .cs-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: max(16px, env(safe-area-inset-top)) 20px 0;
-    box-sizing: border-box;
+    padding: max(0.875rem, env(safe-area-inset-top)) 1.25rem 0;
 }
-.cs-title {
-    font-size: 22px;
-    margin: 0;
-    letter-spacing: 4px;
-    background: linear-gradient(90deg, #ffe66d, #ff6b6b);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-.cs-back {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(255,255,255,0.1);
-    color: #fff;
-    font-size: 28px;
-    line-height: 36px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.cs-back:hover { background: rgba(255,255,255,0.2); }
-.cs-placeholder { width: 40px; }
 
-/* 左右箭头 */
+.cs-title {
+    margin: 0;
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    background: linear-gradient(90deg, #ffe66d, #ff6b6b);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+
+.cs-back,
+.cs-placeholder {
+    width: 2.75rem;
+}
+
+.cs-back {
+    display: grid;
+    place-items: center;
+    height: 2.75rem;
+    padding: 0 0 2px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-family: Arial, sans-serif;
+    font-size: 1.375rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.cs-back:hover {
+    transform: scale(1.06);
+    background: rgba(255, 255, 255, 0.2);
+}
+
 .cs-arrow {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.2);
-    background: rgba(255,255,255,0.08);
-    color: #fff;
-    font-size: 32px;
-    line-height: 46px;
-    cursor: pointer;
-    transition: all 0.2s;
-    backdrop-filter: blur(4px);
     z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 3.25rem;
+    height: 3.25rem;
+    padding: 0;
+    transform: translateY(-50%);
+    border: 2px solid rgba(255, 255, 255, 0.22);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: all 0.2s ease;
 }
-.cs-arrow:hover {
-    background: rgba(255,255,255,0.18);
-    border-color: rgba(255,255,255,0.4);
-    transform: translateY(-50%) scale(1.08);
-}
-.cs-arrow-left { left: max(20px, env(safe-area-inset-left)); }
-.cs-arrow-right { right: max(20px, env(safe-area-inset-right)); }
 
-/* 角色指示器 */
+.cs-arrow:hover {
+    transform: translateY(-50%) scale(1.08);
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.42);
+}
+
+.cs-arrow-left {
+    left: max(1rem, env(safe-area-inset-left));
+}
+
+.cs-arrow-right {
+    right: max(1rem, env(safe-area-inset-right));
+}
+
 .cs-dots {
     position: absolute;
-    top: 50%;
+    bottom: 6rem;
     left: 50%;
-    transform: translate(-50%, -50%);
     display: flex;
-    gap: 8px;
-    margin-top: 140px;
-}
-.cs-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.25);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.cs-dot.active {
-    background: #fff;
-    width: 24px;
-    border-radius: 4px;
+    gap: 0.5rem;
+    transform: translateX(-50%);
 }
 
-/* 加载提示 */
+.cs-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.28);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cs-dot.active {
+    width: 1.5rem;
+    background: #fff;
+}
+
 .cs-loading {
     position: absolute;
     top: 50%;
     left: 50%;
+    padding: 0.625rem 1.375rem;
     transform: translate(-50%, -50%);
-    font-size: 16px;
-    color: #aab;
-    background: rgba(0,0,0,0.5);
-    padding: 10px 24px;
-    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.58);
+    color: #dbe4ff;
+    font-size: 0.9375rem;
+    white-space: nowrap;
 }
 
-/* 底部 */
 .cs-bottom {
-    margin-top: auto;
-    padding: 0 20px max(24px, env(safe-area-inset-bottom));
-    box-sizing: border-box;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
+    justify-content: center;
+    margin-top: auto;
+    padding: 0 1.25rem max(1.125rem, env(safe-area-inset-bottom));
 }
 
 .cs-confirm {
-    font-size: 20px;
-    font-weight: bold;
-    color: #fff;
+    min-width: min(12rem, calc(100vw - 2.5rem));
+    min-height: 2.875rem;
+    padding: 0.75rem 2rem;
+    border: 0;
+    border-radius: 999px;
     background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-    border: none;
-    padding: 16px 64px;
-    border-radius: 50px;
+    color: #fff;
+    font-size: 1.0625rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 8px 30px rgba(238, 90, 111, 0.4);
-    min-width: 220px;
+    box-shadow: 0 8px 30px rgba(238, 90, 111, 0.42);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
+
 .cs-confirm:hover {
     transform: translateY(-3px);
-    box-shadow: 0 12px 40px rgba(238, 90, 111, 0.6);
+    box-shadow: 0 13px 40px rgba(238, 90, 111, 0.6);
 }
 
-/* ===== 移动端适配 ===== */
-@media (max-width: 600px) {
-    .cs-title { font-size: 18px; letter-spacing: 2px; }
-    .cs-arrow { width: 44px; height: 44px; font-size: 26px; line-height: 40px; }
-    .cs-arrow-left { left: 12px; }
-    .cs-arrow-right { right: 12px; }
-    .cs-dots { margin-top: 120px; }
-    .cs-confirm { font-size: 17px; padding: 14px 48px; min-width: 180px; }
+.cs-confirm:active {
+    transform: translateY(0) scale(0.98);
 }
 
-@media (max-height: 500px) {
-    .cs-top { padding-top: max(10px, env(safe-area-inset-top)); }
-    .cs-title { font-size: 16px; }
-    .cs-dots { margin-top: 90px; }
-    .cs-confirm { font-size: 16px; padding: 12px 40px; }
-    .cs-bottom { gap: 10px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+@media (max-height: 620px) {
+    .cs-top {
+        padding-top: max(10px, env(safe-area-inset-top));
+    }
+    .cs-title {
+        font-size: 1.125rem;
+    }
+    .cs-arrow {
+        width: 2.75rem;
+        height: 2.75rem;
+        font-size: 1.75rem;
+    }
+    .cs-dots {
+        bottom: 4.75rem;
+    }
+    .cs-bottom {
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+    .cs-confirm {
+        min-width: 10.5rem;
+        min-height: 2.375rem;
+        padding: 0.5rem 1.5rem;
+        font-size: 0.9375rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .cs-title {
+        font-size: 1.125rem;
+        letter-spacing: 0;
+    }
+    .cs-arrow-left {
+        left: max(0.5rem, env(safe-area-inset-left));
+    }
+    .cs-arrow-right {
+        right: max(0.5rem, env(safe-area-inset-right));
+    }
+    .cs-dots {
+        bottom: 5.5rem;
+    }
 }
 </style>

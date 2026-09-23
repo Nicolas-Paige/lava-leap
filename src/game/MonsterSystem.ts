@@ -24,7 +24,12 @@ interface SpawnedDino {
     idleAction: THREE.AnimationAction | null;
 }
 
-const DINO_SPAWN_CHANCE = 0.3;
+// 刷新节奏：前期安全，之后受控随机——至少隔 1 个空层，最多连续空 3 层后必刷
+const DINO_FIRST_SPAWN_LAYER = 3;
+const DINO_FIRST_SPAWN_CHANCES: Record<number, number> = { 3: 0.15, 4: 0.4 };
+const DINO_MIN_SPAWN_GAP = 2;
+const DINO_MAX_SPAWN_GAP = 4;
+const DINO_SPAWN_CHANCES_BY_GAP: Record<number, number> = { 2: 0.15, 3: 0.4 };
 const DINO_MODEL_URL = '/models/Monsters/Dino.glb';
 const DINO_PATROL_SPEED = 0.4;   // 巡逻速度（单位/秒）—— 缓慢悠闲
 const DINO_PATROL_MARGIN = 1;  // 距平台边缘的保底距离（不贴边走）
@@ -40,6 +45,7 @@ export class MonsterSystem {
     private loading = false;
     private readonly dinos: SpawnedDino[] = [];
     private pendingSpawns: { layer: number; platforms: Platform[] }[] = [];
+    private lastSpawnLayer = 0;
     private readonly loader = new GLTFLoader();
 
     constructor(scene: THREE.Scene) {
@@ -73,7 +79,7 @@ export class MonsterSystem {
         );
     }
 
-    /** 当一层平台生成后调用，随机在其中一个平台上生成 Dino（跳过 layer 0） */
+    /** 当一层平台生成后调用，按受控随机节奏决定是否生成 Dino（跳过 layer 0） */
     trySpawnOnLayer(layer: number, platforms: Platform[]): void {
         if (layer <= 0) return;
         if (!this.loaded) {
@@ -83,15 +89,34 @@ export class MonsterSystem {
         this._spawnDino(layer, platforms);
     }
 
+    /** 是否应该在当前层生成：保证前期安全，同时避免长期无怪或连续刷怪 */
+    private shouldSpawnOnLayer(layer: number): boolean {
+        if (layer < DINO_FIRST_SPAWN_LAYER) return false;
+
+        const gap = layer - this.lastSpawnLayer;
+        if (this.lastSpawnLayer === 0) {
+            if (gap >= DINO_FIRST_SPAWN_LAYER + 2) return true;
+            return Math.random() < (DINO_FIRST_SPAWN_CHANCES[gap] ?? 0);
+        }
+
+        if (gap < DINO_MIN_SPAWN_GAP) return false;
+        if (gap >= DINO_MAX_SPAWN_GAP) return true;
+        return Math.random() < (DINO_SPAWN_CHANCES_BY_GAP[gap] ?? 0);
+    }
+
     /** 内部：克隆 Dino 实例并放置到平台上 */
     private _spawnDino(layer: number, platforms: Platform[]): void {
-        if (Math.random() > DINO_SPAWN_CHANCE) return;
+        if (!this.shouldSpawnOnLayer(layer)) return;
         if (!this.gltfScene) return;
 
         const layerPlatforms = platforms.filter(p => p.layer === layer);
         if (layerPlatforms.length === 0) return;
 
-        const platform = layerPlatforms[Math.floor(Math.random() * layerPlatforms.length)];
+        // 优先站上稳定平台，避免地狱模式的怪物随消失平台一起提前退场
+        const stablePlatforms = layerPlatforms.filter(p => p.type === 'normal');
+        const candidates = stablePlatforms.length > 0 ? stablePlatforms : layerPlatforms;
+        const platform = candidates[Math.floor(Math.random() * candidates.length)];
+        this.lastSpawnLayer = layer;
 
         // SkeletonUtils 克隆：正确复制骨骼绑定（普通 clone 会导致蒙皮网格失效）
         const model = SkeletonUtils.clone(this.gltfScene) as THREE.Group;
@@ -363,6 +388,7 @@ export class MonsterSystem {
         }
         this.dinos.length = 0;
         this.pendingSpawns.length = 0;
+        this.lastSpawnLayer = 0;
     }
 
     dispose(): void {

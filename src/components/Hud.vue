@@ -53,62 +53,68 @@ const layerGlow = computed(() => {
 </template>
 
 <style scoped>
-/* 键盘提示 */
 .hud-tip {
     position: absolute;
-    top: 15px;
-    left: 15px;
-    color: rgba(255, 255, 255, 0.7);
-    background: rgba(10, 10, 30, 0.75);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 10px 16px;
-    border-radius: var(--ui-radius-sm);
+    top: max(0.75rem, env(safe-area-inset-top));
+    left: max(0.75rem, env(safe-area-inset-left));
     z-index: 99;
-    font-size: 13px;
-    line-height: 1.5;
-    max-width: 320px;
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: 0.5rem;
+    max-width: min(22rem, calc(100vw - 2rem));
+    padding: 0.625rem 0.875rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--ui-radius-sm);
+    background: rgba(10, 10, 30, 0.76);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    backdrop-filter: blur(8px);
 }
 
 .tip-icon {
-    font-size: 14px;
-    flex-shrink: 0;
-    margin-top: 1px;
+    flex: 0 0 auto;
+    margin-top: 0.0625rem;
+    font-size: 0.9375rem;
 }
 
-.hud-tip-enter-active { transition: opacity 0.5s ease 1s; }
-.hud-tip-leave-active { transition: opacity 0.5s ease; }
-.hud-tip-enter-from, .hud-tip-leave-to { opacity: 0; }
+.hud-tip-enter-active {
+    transition: opacity 0.5s ease 1s;
+}
 
-/* 层数显示 */
+.hud-tip-leave-active {
+    transition: opacity 0.5s ease;
+}
+
+.hud-tip-enter-from,
+.hud-tip-leave-to {
+    opacity: 0;
+}
+
 .layer {
     position: absolute;
-    top: 15px;
-    right: 15px;
-    color: #fff;
-    background: rgba(10, 10, 30, 0.75);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 14px 22px;
-    border-radius: var(--ui-radius-md);
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
     z-index: 99;
-    text-align: right;
-    line-height: 1.2;
-    position: relative;
     overflow: hidden;
+    padding: 0.75rem 1.125rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--ui-radius-md);
+    background: rgba(10, 10, 30, 0.76);
+    color: #fff;
+    line-height: 1.2;
+    text-align: right;
+    backdrop-filter: blur(8px);
 }
 
 .layer-glow {
     position: absolute;
     top: -10px;
     right: -10px;
-    width: 100px;
-    height: 100px;
-    pointer-events: none;
+    width: 6rem;
+    height: 6rem;
     opacity: 0.5;
+    pointer-events: none;
     transition: background 1s ease;
 }
 
@@ -118,29 +124,29 @@ const layerGlow = computed(() => {
     display: flex;
     align-items: baseline;
     justify-content: flex-end;
-    gap: 4px;
+    gap: 0.3125rem;
 }
 
 .layer-number {
-    font-size: 32px;
+    font-size: 2rem;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
     transition: color 0.8s ease, text-shadow 0.8s ease;
-    letter-spacing: -1px;
 }
 
 .layer-label {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.875rem;
     font-weight: 500;
 }
 
 .layer-best {
     position: relative;
     z-index: 1;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.4);
-    margin-top: 6px;
+    margin-top: 0.3125rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.8125rem;
     font-weight: 500;
 }
 
@@ -149,15 +155,28 @@ const layerGlow = computed(() => {
     font-weight: 600;
 }
 
-/* 触控设备：移到左上角 */
 .layer.touch {
-    top: 15px;
+    top: max(0.75rem, env(safe-area-inset-top));
     right: auto;
-    left: 15px;
-    padding: 10px 16px;
+    left: max(0.75rem, env(safe-area-inset-left));
+    padding: 0.625rem 0.875rem;
 }
 
 .layer.touch .layer-number {
-    font-size: 24px;
+    font-size: 1.625rem;
+}
+
+@media (max-height: 500px) {
+    .hud-tip {
+        max-width: min(18rem, calc(100vw - 2rem));
+        font-size: 0.75rem;
+        line-height: 1.35;
+    }
+    .layer {
+        padding: 0.5rem 0.75rem;
+    }
+    .layer-number {
+        font-size: 1.625rem;
+    }
 }
 </style>

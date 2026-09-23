@@ -121,225 +121,223 @@ function joyLayerEnd(e: TouchEvent) {
 </template>
 
 <style scoped>
-/* 旋转提示（竖屏遮罩） */
 #rotateHint {
     position: fixed;
     inset: 0;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     z-index: 2000;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 1.25rem;
+    background: linear-gradient(135deg, #080817 0%, #111827 50%, #082032 100%);
     color: #fff;
     text-align: center;
-    padding: 0 20px;
-}
-#rotateHint .rotate-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-    animation: rotateAnim 2s ease-in-out infinite;
-}
-@keyframes rotateAnim {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(90deg); }
-}
-#rotateHint h2 {
-    font-size: 22px;
-    margin-bottom: 8px;
-}
-#rotateHint p {
-    font-size: 14px;
-    color: #aab;
 }
 
-/* 触控控件容器 */
+.rotate-icon {
+    margin-bottom: 1.125rem;
+    font-size: 4rem;
+    animation: rotateAnim 2s ease-in-out infinite;
+}
+
+@keyframes rotateAnim {
+    0%, 100% { transform: rotate(0); }
+    50% { transform: rotate(90deg); }
+}
+
+#rotateHint h2 {
+    margin-bottom: 0.4375rem;
+    font-size: 1.625rem;
+}
+
+#rotateHint p {
+    color: #aab;
+    font-size: 1rem;
+}
+
 #touchControls {
     position: fixed;
     inset: 0;
     z-index: 100;
     touch-action: none;
-    -webkit-user-select: none;
     user-select: none;
+    -webkit-user-select: none;
     -webkit-touch-callout: none;
 }
 
-/* 左半屏：动态摇杆触摸层 */
-#joystickLayer {
+#joystickLayer,
+#cameraLayer {
     position: absolute;
     top: 0;
-    left: 0;
-    width: 50%;
     height: 100%;
     background: transparent;
 }
 
-/* 动态浮动摇杆 —— 固定定位，中心对齐触摸点，pointer-events 穿透 */
+#joystickLayer {
+    left: 0;
+    width: 50%;
+}
+
+#cameraLayer {
+    right: 0;
+    width: 50%;
+}
+
 #joystick {
     position: fixed;
-    width: 130px;
-    height: 130px;
-    margin-left: -65px;
-    margin-top: -65px;
+    width: 7.25rem;
+    height: 7.25rem;
+    margin-left: -3.625rem;
+    margin-top: -3.625rem;
+    border: 2px solid rgba(255, 255, 255, 0.28);
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.08);
-    border: 2px solid rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(4px);
     pointer-events: none;
+    backdrop-filter: blur(4px);
     animation: joyFadeIn 0.15s ease-out;
     z-index: 101;
 }
+
 @keyframes joyFadeIn {
     from { opacity: 0; transform: scale(0.8); }
     to { opacity: 1; transform: scale(1); }
 }
+
 #joystickThumb {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 56px;
-    height: 56px;
-    margin: -28px 0 0 -28px;
+    width: 3rem;
+    height: 3rem;
+    transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9), rgba(200,200,220,0.7));
+    background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.92), rgba(200, 200, 220, 0.7));
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     pointer-events: none;
 }
 
-/* 按钮 */
 .touch-btn {
     position: absolute;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.32);
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.46);
     color: #fff;
-    font-weight: bold;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    font-weight: 700;
     cursor: pointer;
-    backdrop-filter: blur(4px);
-    -webkit-tap-highlight-color: transparent;
+    backdrop-filter: blur(5px);
     touch-action: none;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.12s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
+
 .touch-btn:active {
     transform: scale(0.92);
 }
 
 #btnJump {
-    right: max(30px, env(safe-area-inset-right) + 20px);
-    bottom: max(40px, env(safe-area-inset-bottom) + 24px);
-    width: 90px;
-    height: 90px;
-    background: rgba(74, 144, 226, 0.45);
+    right: max(1.5rem, env(safe-area-inset-right) + 1.125rem);
+    bottom: max(1.875rem, env(safe-area-inset-bottom) + 1.375rem);
+    width: 5.75rem;
+    height: 5.75rem;
+    background: rgba(74, 144, 226, 0.5);
+    font-size: 1.125rem;
 }
+
 #btnDash {
-    right: max(135px, env(safe-area-inset-right) + 120px);
-    bottom: max(110px, env(safe-area-inset-bottom) + 70px);
-    width: 70px;
-    height: 70px;
-    font-size: 14px;
-    background: rgba(255, 107, 107, 0.45);
+    right: max(7rem, calc(env(safe-area-inset-right) + 6.75rem));
+    bottom: max(5.25rem, calc(env(safe-area-inset-bottom) + 4.75rem));
+    width: 4.25rem;
+    height: 4.25rem;
+    background: rgba(255, 107, 107, 0.5);
+    font-size: 0.875rem;
 }
+
 #btnDash.active {
-    background: rgba(255, 60, 60, 0.8);
     border-color: rgba(255, 200, 200, 0.9);
+    background: rgba(255, 60, 60, 0.82);
     box-shadow: 0 0 16px rgba(255, 80, 80, 0.7);
     transform: scale(0.95);
 }
-#btnCameraMode {
-    top: max(15px, env(safe-area-inset-top) + 10px);
-    right: max(75px, env(safe-area-inset-right) + 70px);
-    width: 50px;
-    height: 50px;
-    font-size: 20px;
-    background: rgba(0, 0, 0, 0.5);
-}
+
+#btnCameraMode,
 #btnPauseTouch {
-    top: max(15px, env(safe-area-inset-top) + 10px);
-    right: max(15px, env(safe-area-inset-right) + 10px);
-    width: 50px;
-    height: 50px;
-    font-size: 22px;
+    top: max(0.75rem, env(safe-area-inset-top) + 0.5625rem);
+    width: 3rem;
+    height: 3rem;
     background: rgba(0, 0, 0, 0.5);
+    font-size: 1.25rem;
 }
 
-/* 相机拖拽层（右半屏） */
-#cameraLayer {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 50%;
-    height: 100%;
-    background: transparent;
+#btnCameraMode {
+    right: max(4.125rem, calc(env(safe-area-inset-right) + 3.875rem));
 }
 
-/* ============ 小屏横屏适配（高度 < 400px 或 宽度 < 650px） ============ */
-@media (max-height: 400px), (max-width: 650px) {
+#btnPauseTouch {
+    right: max(0.75rem, env(safe-area-inset-right) + 0.5625rem);
+}
+
+@media (max-height: 460px), (max-width: 700px) {
     #joystick {
-        width: 100px;
-        height: 100px;
-        margin-left: -50px;
-        margin-top: -50px;
+        width: 6.25rem;
+        height: 6.25rem;
+        margin-left: -3.125rem;
+        margin-top: -3.125rem;
     }
     #joystickThumb {
-        width: 44px;
-        height: 44px;
-        margin: -22px 0 0 -22px;
+        width: 2.5rem;
+        height: 2.5rem;
     }
     #btnJump {
-        width: 72px;
-        height: 72px;
-        right: max(20px, env(safe-area-inset-right) + 14px);
-        bottom: max(24px, env(safe-area-inset-bottom) + 14px);
-        font-size: 14px;
+        right: max(1rem, env(safe-area-inset-right) + 0.75rem);
+        bottom: max(1.25rem, env(safe-area-inset-bottom) + 0.9375rem);
+        width: 4.5rem;
+        height: 4.5rem;
+        font-size: 0.875rem;
     }
     #btnDash {
-        width: 56px;
-        height: 56px;
-        right: max(102px, env(safe-area-inset-right) + 88px);
-        bottom: max(72px, env(safe-area-inset-bottom) + 44px);
-        font-size: 12px;
+        right: max(5.5rem, calc(env(safe-area-inset-right) + 5.25rem));
+        bottom: max(4rem, calc(env(safe-area-inset-bottom) + 3.5625rem));
+        width: 3.5rem;
+        height: 3.5rem;
+        font-size: 0.75rem;
+    }
+    #btnCameraMode,
+    #btnPauseTouch {
+        top: max(0.5rem, env(safe-area-inset-top) + 0.375rem);
+        width: 2.625rem;
+        height: 2.625rem;
+        font-size: 1.0625rem;
     }
     #btnCameraMode {
-        width: 42px;
-        height: 42px;
-        font-size: 18px;
-        top: max(10px, env(safe-area-inset-top) + 6px);
-        right: max(62px, env(safe-area-inset-right) + 58px);
-    }
-    #btnPauseTouch {
-        width: 42px;
-        height: 42px;
-        font-size: 18px;
-        top: max(10px, env(safe-area-inset-top) + 6px);
-        right: max(10px, env(safe-area-inset-right) + 6px);
+        right: max(3.375rem, calc(env(safe-area-inset-right) + 3.125rem));
     }
 }
 
-/* 更极端的小屏（高度 < 340px，例如超窄安卓横屏）：再缩一档 */
 @media (max-height: 340px) {
     #joystick {
-        width: 84px;
-        height: 84px;
-        margin-left: -42px;
-        margin-top: -42px;
+        width: 4.875rem;
+        height: 4.875rem;
+        margin-left: -2.4375rem;
+        margin-top: -2.4375rem;
     }
     #joystickThumb {
-        width: 38px;
-        height: 38px;
-        margin: -19px 0 0 -19px;
+        width: 2.125rem;
+        height: 2.125rem;
     }
     #btnJump {
-        width: 60px;
-        height: 60px;
+        width: 3.5rem;
+        height: 3.5rem;
     }
     #btnDash {
-        width: 48px;
-        height: 48px;
-        right: max(82px, env(safe-area-inset-right) + 68px);
-        bottom: max(56px, env(safe-area-inset-bottom) + 32px);
+        width: 2.875rem;
+        height: 2.875rem;
+        right: max(4.875rem, calc(env(safe-area-inset-right) + 4.625rem));
+        bottom: max(3.375rem, calc(env(safe-area-inset-bottom) + 3rem));
     }
 }
 </style>

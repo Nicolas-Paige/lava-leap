@@ -903,10 +903,6 @@ export function useGame(options: UseGameOptions) {
             platformSystem.clear();
             platformSystem.setGenerator(mode.createGenerator(), mode);
             platformSystem.initInitialLayers();
-            // 初始层也随机生成 Dragon（跳过第 0 层）
-            for (let l = 1; l <= 5; l++) {
-                monsterSystem?.trySpawnOnLayer(l, platformSystem.platforms);
-            }
         }
         // 启用岩浆
         if (lavaSystem) {
@@ -958,10 +954,6 @@ export function useGame(options: UseGameOptions) {
             monsterSystem?.clear();
             platformSystem.setGenerator(mode.createGenerator(), mode);
             platformSystem.initInitialLayers();
-            // 初始层也随机生成 Dragon（跳过第 0 层）
-            for (let l = 1; l <= 5; l++) {
-                monsterSystem?.trySpawnOnLayer(l, platformSystem.platforms);
-            }
         }
         if (lavaSystem) {
             lavaSystem.reset(mode.lava.initialY, mode.lava.riseSpeed);

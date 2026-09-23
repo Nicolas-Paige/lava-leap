@@ -1,139 +1,131 @@
 /* ==========================================
    Lava Leap — 全局 UI 设计系统
-   统一毛玻璃卡片、按钮、动画等视觉语言
    ========================================== */
 
-/* ====== CSS 变量 ====== */
 :root {
-    /* 色彩系统 */
-    --ui-bg-overlay: rgba(10, 10, 30, 0.8);
-    --ui-bg-card: rgba(20, 25, 45, 0.95);
-    --ui-bg-btn: rgba(255, 255, 255, 0.06);
-    --ui-bg-btn-hover: rgba(255, 255, 255, 0.12);
-    --ui-border: rgba(255, 255, 255, 0.08);
-    --ui-border-hover: rgba(255, 255, 255, 0.18);
-    --ui-text: #e2e8f0;
-    --ui-text-dim: #94a3b8;
-    --ui-text-muted: #64748b;
-
-    /* 主题色 */
-    --ui-accent-gold: #fbbf24;
+    --ui-bg-overlay: rgba(5, 8, 18, 0.74);
+    --ui-bg-card: rgba(15, 20, 34, 0.94);
+    --ui-bg-btn: rgba(255, 255, 255, 0.055);
+    --ui-bg-btn-hover: rgba(255, 255, 255, 0.105);
+    --ui-border: rgba(255, 255, 255, 0.12);
+    --ui-border-hover: rgba(255, 255, 255, 0.24);
+    --ui-text: #eef4ff;
+    --ui-text-dim: #a7b5ca;
+    --ui-text-muted: #738198;
+    --ui-accent-gold: #ffd166;
     --ui-accent-red: #ff6b6b;
-    --ui-accent-blue: #4a90e2;
-    --ui-accent-green: #6dff8e;
-    --ui-accent-orange: #ff8c42;
-
-    /* 阴影 */
-    --ui-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    --ui-glow-gold: rgba(251, 191, 36, 0.15);
-
-    /* 圆角 */
-    --ui-radius-sm: 10px;
-    --ui-radius-md: 16px;
-    --ui-radius-lg: 24px;
-
-    /* 过渡 */
+    --ui-accent-blue: #56c7ff;
+    --ui-accent-green: #7cf29a;
+    --ui-accent-orange: #ff9f45;
+    --ui-shadow: 0 1.25rem 3.5rem rgba(0, 0, 0, 0.42);
+    --ui-radius-sm: 0.5rem;
+    --ui-radius-md: 0.625rem;
+    --ui-radius-lg: 0.75rem;
     --ui-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-
-    /* 模糊 */
-    --ui-blur: blur(12px);
+    --ui-blur: blur(1rem);
+    --ui-control-height: 2.875rem;
+    --ui-control-height-compact: 2.5rem;
+    --ui-control-x: 1.125rem;
+    --ui-control-y: 0.75rem;
 }
 
-/* ====== 通用毛玻璃面板 ====== */
 .ui-panel {
     position: fixed;
     inset: 0;
-    background: var(--ui-bg-overlay);
     z-index: 1000;
-    backdrop-filter: var(--ui-blur);
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
     padding:
-        max(12px, env(safe-area-inset-top))
-        max(12px, env(safe-area-inset-right))
-        max(12px, env(safe-area-inset-bottom))
-        max(12px, env(safe-area-inset-left));
-    box-sizing: border-box;
+        max(0.875rem, env(safe-area-inset-top))
+        max(0.875rem, env(safe-area-inset-right))
+        max(0.875rem, env(safe-area-inset-bottom))
+        max(0.875rem, env(safe-area-inset-left));
+    background: var(--ui-bg-overlay);
+    backdrop-filter: var(--ui-blur);
 }
 
 .ui-card {
-    margin: auto;
+    position: relative;
     display: flex;
     flex-direction: column;
-    width: 100%;
-    max-width: 420px;
+    width: min(26rem, calc(100vw - 1.5rem));
+    max-height: calc(100vh - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+    padding: 1.5rem;
+    overflow: hidden;
     background: var(--ui-bg-card);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-lg);
     box-shadow: var(--ui-shadow);
-    padding: 32px 28px;
-    position: relative;
-    overflow: hidden;
     animation: ui-card-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* 卡片顶部光效 */
 .ui-card::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 50%;
+    width: 13.75rem;
+    height: 5.625rem;
     transform: translateX(-50%);
-    width: 200px;
-    height: 80px;
-    background: radial-gradient(ellipse, rgba(255, 255, 255, 0.06), transparent 70%);
+    background: radial-gradient(ellipse, rgba(255, 255, 255, 0.07), transparent 70%);
     pointer-events: none;
 }
 
 @keyframes ui-card-in {
-    from { opacity: 0; transform: translateY(16px) scale(0.96); }
+    from { opacity: 0; transform: translateY(14px) scale(0.97); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ====== 通用标题 ====== */
 .ui-title {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    margin: 0 0 28px 0;
-    font-size: 28px;
-    font-weight: 700;
+    gap: 0.625rem;
+    margin: 0 0 1.25rem;
     color: #fff;
+    font-size: 1.625rem;
+    font-weight: 700;
+    line-height: 1.2;
     text-align: center;
     text-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
 }
 
 .ui-title-icon {
-    font-size: 30px;
+    font-size: 1.625rem;
 }
 
-/* ====== 通用按钮 ====== */
 .ui-btn {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 0.625rem;
     width: 100%;
-    font-size: 16px;
-    font-weight: 600;
-    color: #fff;
-    background: var(--ui-bg-btn);
+    min-height: var(--ui-control-height);
+    padding: var(--ui-control-y) var(--ui-control-x);
+    overflow: hidden;
     border: 1px solid var(--ui-border);
-    padding: 14px 24px;
     border-radius: var(--ui-radius-sm);
+    background: var(--ui-bg-btn);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
     cursor: pointer;
     transition: all var(--ui-transition);
-    position: relative;
-    overflow: hidden;
     backdrop-filter: blur(8px);
 }
 
 .ui-btn::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent);
     opacity: 0;
     transition: opacity var(--ui-transition);
 }
@@ -153,131 +145,120 @@
 }
 
 .ui-btn-icon {
-    font-size: 18px;
-    width: 24px;
+    width: 1.375em;
+    flex: 0 0 auto;
+    font-size: 1.125em;
     text-align: center;
 }
 
-/* 按钮变体 */
 .ui-btn-primary {
-    background: linear-gradient(135deg, rgba(109, 255, 142, 0.15), rgba(74, 222, 128, 0.08));
-    border-color: rgba(109, 255, 142, 0.3);
+    background: linear-gradient(135deg, rgba(109, 255, 142, 0.16), rgba(74, 222, 128, 0.08));
+    border-color: rgba(109, 255, 142, 0.32);
     color: var(--ui-accent-green);
-}
-.ui-btn-primary:hover {
-    box-shadow: 0 8px 25px rgba(109, 255, 142, 0.2);
-    border-color: rgba(109, 255, 142, 0.5);
 }
 
 .ui-btn-info {
-    background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(53, 122, 189, 0.08));
-    border-color: rgba(74, 144, 226, 0.3);
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.16), rgba(53, 122, 189, 0.08));
+    border-color: rgba(74, 144, 226, 0.32);
     color: var(--ui-accent-blue);
-}
-.ui-btn-info:hover {
-    box-shadow: 0 8px 25px rgba(74, 144, 226, 0.2);
-    border-color: rgba(74, 144, 226, 0.5);
 }
 
 .ui-btn-gold {
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.08));
-    border-color: rgba(251, 191, 36, 0.3);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(245, 158, 11, 0.08));
+    border-color: rgba(251, 191, 36, 0.32);
     color: var(--ui-accent-gold);
-}
-.ui-btn-gold:hover {
-    box-shadow: 0 8px 25px rgba(251, 191, 36, 0.2);
-    border-color: rgba(251, 191, 36, 0.5);
 }
 
 .ui-btn-subtle {
     color: var(--ui-text-dim);
 }
-.ui-btn-subtle:hover {
-    color: var(--ui-text);
-}
 
 .ui-btn-danger {
-    background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(238, 90, 111, 0.08));
-    border-color: rgba(255, 107, 107, 0.3);
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.16), rgba(238, 90, 111, 0.08));
+    border-color: rgba(255, 107, 107, 0.32);
     color: var(--ui-accent-red);
 }
+
+.ui-btn-primary:hover,
+.ui-btn-info:hover,
+.ui-btn-gold:hover,
 .ui-btn-danger:hover {
-    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.2);
-    border-color: rgba(255, 107, 107, 0.5);
+    border-color: currentColor;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.24);
 }
 
-/* ====== 通用提示文字 ====== */
 .ui-hint {
+    position: relative;
+    z-index: 1;
+    margin-top: 0.875rem;
     color: var(--ui-text-muted);
-    font-size: 13px;
+    font-size: 0.8125rem;
+    line-height: 1.5;
     text-align: center;
-    margin-top: 16px;
 }
 
-/* ====== 通用淡入动画 ====== */
-.ui-fade-enter-active { transition: opacity 0.3s ease, transform 0.3s ease; }
-.ui-fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
-.ui-fade-enter-from { opacity: 0; transform: scale(0.95); }
-.ui-fade-leave-to { opacity: 0; transform: scale(0.95); }
+.ui-fade-enter-active,
+.ui-fade-leave-active {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
 
-/* ====== 自定义范围滑块（统一风格） ====== */
+.ui-fade-enter-from,
+.ui-fade-leave-to {
+    opacity: 0;
+    transform: scale(0.96);
+}
+
 .ui-range {
-    -webkit-appearance: none;
-    appearance: none;
     flex: 1 1 auto;
     min-width: 0;
-    height: 6px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.1);
+    height: 0.375rem;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 999px;
     outline: none;
+    background: rgba(255, 255, 255, 0.12);
     cursor: pointer;
 }
 
 .ui-range::-webkit-slider-thumb {
-    -webkit-appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    -webkit-appearance: none;
+    border: 0;
     border-radius: 50%;
     background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.45);
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.ui-range::-webkit-slider-thumb:hover {
-    transform: scale(1.15);
-    box-shadow: 0 2px 12px rgba(251, 191, 36, 0.6);
 }
 
 .ui-range::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 0;
     border-radius: 50%;
     background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
-    border: none;
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.45);
     cursor: pointer;
 }
 
-/* ====== 通用选择框 ====== */
 .ui-select {
     flex: 1 1 auto;
     min-width: 0;
-    padding: 10px 14px;
-    border-radius: var(--ui-radius-sm);
+    min-height: var(--ui-control-height-compact);
+    padding: 0.625rem 2rem 0.625rem 0.75rem;
     border: 1px solid var(--ui-border);
-    background: rgba(255, 255, 255, 0.06);
-    color: #fff;
-    font-size: 15px;
-    cursor: pointer;
+    border-radius: var(--ui-radius-sm);
     outline: none;
-    -webkit-appearance: none;
     appearance: none;
+    -webkit-appearance: none;
+    background-color: rgba(255, 255, 255, 0.06);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%2394a3b8'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 32px;
+    background-position: right 0.75rem center;
+    color: #fff;
+    font-size: 0.9375rem;
+    cursor: pointer;
 }
 
 .ui-select:focus {
@@ -289,16 +270,40 @@
     color: #fff;
 }
 
-/* ====== 小屏压缩 ====== */
-@media (max-height: 460px) {
-    .ui-card { padding: 24px 20px; border-radius: var(--ui-radius-md); }
-    .ui-title { font-size: 24px; margin-bottom: 20px; }
-    .ui-btn { font-size: 15px; padding: 12px 20px; border-radius: 8px; }
+@media (max-height: 620px) {
+    .ui-card {
+        padding: 1rem;
+        border-radius: var(--ui-radius-md);
+    }
+    .ui-title {
+        margin-bottom: 1rem;
+        font-size: 1.375rem;
+    }
+    .ui-btn {
+        min-height: 2.375rem;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.9375rem;
+    }
+    .ui-hint {
+        margin-top: 0.625rem;
+        font-size: 0.75rem;
+    }
 }
 
-@media (max-height: 380px) {
-    .ui-card { padding: 20px 16px; }
-    .ui-title { font-size: 20px; margin-bottom: 16px; }
-    .ui-btn { font-size: 14px; padding: 10px 16px; }
-    .ui-hint { font-size: 12px; margin-top: 10px; }
+@media (max-height: 430px) {
+    .ui-card {
+        padding: 0.875rem 0.75rem;
+    }
+    .ui-title {
+        margin-bottom: 0.75rem;
+        font-size: 1.125rem;
+    }
+    .ui-title-icon {
+        font-size: 1.25rem;
+    }
+    .ui-btn {
+        min-height: 2.125rem;
+        padding: 0.375rem 0.625rem;
+        font-size: 0.8125rem;
+    }
 }

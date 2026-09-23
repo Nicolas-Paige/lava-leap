@@ -70,44 +70,101 @@ function isMenuVisible(): boolean {
 
 <style scoped>
 .menu-card {
-    margin: auto;
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
-    max-width: 360px;
-    background: var(--ui-bg-card);
+    width: min(18rem, calc(100vw - 1.5rem));
+    max-height: calc(100vh - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+    padding: 0.875rem 0.75rem;
+    overflow: hidden;
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-lg);
+    background: var(--ui-bg-card);
     box-shadow: var(--ui-shadow);
-    padding: 32px 24px;
-    position: relative;
-    overflow: hidden;
-    animation: ui-card-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: menu-card-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .menu-card-glow {
     position: absolute;
     top: 0;
     left: 50%;
+    width: 12rem;
+    height: 5rem;
     transform: translateX(-50%);
-    width: 200px;
-    height: 100px;
-    background: radial-gradient(ellipse, rgba(255, 255, 255, 0.06), transparent 70%);
+    background: radial-gradient(ellipse, rgba(255, 255, 255, 0.07), transparent 70%);
     pointer-events: none;
 }
 
 .menu-card-glow.death-glow {
-    background: radial-gradient(ellipse, rgba(255, 107, 107, 0.12), transparent 70%);
+    background: radial-gradient(ellipse, rgba(255, 107, 107, 0.14), transparent 70%);
 }
 
-@keyframes ui-card-in {
-    from { opacity: 0; transform: translateY(16px) scale(0.96); }
+.ui-title {
+    margin-bottom: 0.625rem;
+    font-size: 1.25rem;
+}
+
+.ui-title-icon {
+    font-size: 1.25rem;
+}
+
+.ui-btn {
+    min-height: 2.25rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.ui-btn-icon {
+    width: 1.125rem;
+    font-size: 0.9375rem;
+}
+
+.ui-hint {
+    margin-top: 0.5rem;
+    font-size: 0.6875rem;
+}
+@keyframes menu-card-in {
+    from { opacity: 0; transform: translateY(14px) scale(0.97); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* 按钮间距 */
 .ui-btn + .ui-btn {
-    margin-top: 10px;
+    margin-top: 0.4375rem;
+}
+
+@media (max-height: 620px) {
+    .menu-card {
+        padding: 1rem;
+    }
+    .ui-title {
+        margin-bottom: 0.875rem;
+        font-size: 1.375rem;
+    }
+    .ui-btn {
+        min-height: 2.375rem;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.9375rem;
+    }
+    .ui-hint {
+        margin-top: 0.5625rem;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-height: 430px) {
+    .menu-card {
+        padding: 0.875rem 0.75rem;
+    }
+    .ui-title {
+        margin-bottom: 0.625rem;
+        font-size: 1.125rem;
+    }
+    .ui-btn {
+        min-height: 2.125rem;
+        padding: 0.375rem 0.625rem;
+        font-size: 0.8125rem;
+    }
 }
 </style>

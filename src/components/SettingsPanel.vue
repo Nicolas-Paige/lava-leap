@@ -66,7 +66,7 @@ function onLanguageChange(e: Event) {
                     </div>
                 </div>
 
-                <button class="ui-btn ui-btn-subtle" style="margin-top: 20px;" @click="emit('back')">
+                <button class="ui-btn ui-btn-subtle settings-back" @click="emit('back')">
                     <span class="ui-btn-icon">←</span>
                     {{ tr('back') }}
                 </button>
@@ -78,60 +78,75 @@ function onLanguageChange(e: Event) {
 <style scoped>
 .settings-glow {
     position: absolute;
-    top: -40px;
+    top: -2.5rem;
     left: 50%;
+    width: 17.5rem;
+    height: 8.125rem;
     transform: translateX(-50%);
-    width: 260px;
-    height: 120px;
-    background: radial-gradient(ellipse, rgba(251, 191, 36, 0.1), transparent 70%);
+    background: radial-gradient(ellipse, rgba(251, 191, 36, 0.11), transparent 70%);
     pointer-events: none;
 }
 
 .setting-group {
-    margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    position: relative;
+    z-index: 1;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
+
 .setting-group:last-of-type {
     margin-bottom: 0;
     padding-bottom: 0;
-    border-bottom: none;
+    border-bottom: 0;
+}
+
+.settings-back {
+    margin-top: 1.25rem;
 }
 
 .setting-row {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 0.875rem;
     color: var(--ui-text);
-    font-size: 16px;
+    font-size: 1rem;
 }
 
 .setting-row label {
-    min-width: 100px;
-    text-align: right;
-    flex-shrink: 0;
+    flex: 0 0 auto;
+    min-width: 6.25rem;
+    font-size: 0.9375rem;
     font-weight: 500;
-    font-size: 15px;
+    text-align: right;
 }
 
 .vol-val {
-    min-width: 44px;
-    text-align: left;
-    font-variant-numeric: tabular-nums;
-    flex-shrink: 0;
-    font-weight: 600;
+    flex: 0 0 auto;
+    min-width: 3rem;
     color: var(--ui-accent-gold);
-    font-size: 15px;
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: left;
 }
 
-/* 小屏压缩 */
-@media (max-height: 460px) {
-    .setting-row { font-size: 14px; gap: 10px; }
-    .setting-row label { min-width: 85px; font-size: 14px; }
-}
-@media (max-height: 380px) {
-    .setting-row { font-size: 13px; gap: 8px; }
-    .setting-row label { min-width: 70px; }
-    .vol-val { min-width: 38px; font-size: 13px; }
+@media (max-height: 500px) {
+    .setting-group {
+        margin-bottom: 0.875rem;
+        padding-bottom: 0.75rem;
+    }
+    .setting-row {
+        gap: 0.5rem;
+        font-size: 0.9375rem;
+    }
+    .setting-row label {
+        min-width: 4.75rem;
+        font-size: 0.8125rem;
+    }
+    .vol-val {
+        min-width: 2.375rem;
+        font-size: 0.8125rem;
+    }
 }
 </style>
