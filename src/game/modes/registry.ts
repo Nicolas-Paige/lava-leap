@@ -1,13 +1,11 @@
 import type { GameMode } from './types';
 import { classicMode } from './classic.mode';
-import { infernoMode } from './inferno.mode';
 
 // ============== 模式注册表 ==============
-// UI 通过此表查询所有可用模式
+// 当前仅保留一个统一模式，界面不再提供模式选择
 
 export const MODES: GameMode[] = [
     classicMode,
-    infernoMode,
 ];
 
 export function getModeById(id: string): GameMode | undefined {

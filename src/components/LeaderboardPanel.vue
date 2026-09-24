@@ -5,7 +5,6 @@ import { useI18n } from '../composables/useI18n';
 
 const props = defineProps<{
     visible: boolean;
-    initialMode?: string;  // 初始选中的模式
 }>();
 
 const emit = defineEmits<{
@@ -14,21 +13,15 @@ const emit = defineEmits<{
 
 const { tr } = useI18n();
 
-const activeMode = ref(props.initialMode || 'classic');
 const records = ref<ScoreRecord[]>([]);
 const loading = ref(false);
 let loadGeneration = 0; // 防止竞态：旧请求的结果不会覆盖新请求
-
-const MODES = [
-    { id: 'classic', label: '经典模式', icon: '🔥' },
-    { id: 'inferno', label: '地狱模式', icon: '💀' },
-] as const;
 
 async function loadLeaderboard() {
     loading.value = true;
     const gen = ++loadGeneration; // 递增代次，用于竞态判断
     try {
-        const data = await fetchLeaderboard(activeMode.value, 20);
+        const data = await fetchLeaderboard(20);
         // 如果在这次请求期间又触发了新的加载，丢弃旧结果
         if (gen !== loadGeneration) return;
         records.value = data.records;
@@ -40,18 +33,10 @@ async function loadLeaderboard() {
     }
 }
 
-// 打开时加载，同时同步 initialMode 变化
+// 打开统一排行榜时加载
 watch(() => props.visible, (v) => {
-    if (v) {
-        if (props.initialMode && props.initialMode !== activeMode.value) {
-            activeMode.value = props.initialMode;
-        }
-        loadLeaderboard();
-    }
+    if (v) loadLeaderboard();
 });
-// 切换模式时重新加载
-watch(activeMode, () => { if (props.visible) loadLeaderboard(); });
-
 function medalFor(index: number): string {
     if (index === 0) return '🥇';
     if (index === 1) return '🥈';
@@ -82,20 +67,6 @@ function timeAgo(ts: number): string {
                         {{ tr('leaderboard') || '排行榜' }}
                     </h2>
                     <button class="close-btn" @click="emit('close')">✕</button>
-                </div>
-
-                <!-- 模式切换标签 -->
-                <div class="mode-tabs">
-                    <button
-                        v-for="m in MODES"
-                        :key="m.id"
-                        class="mode-tab"
-                        :class="{ active: activeMode === m.id }"
-                        @click="activeMode = m.id"
-                    >
-                        <span class="tab-icon">{{ m.icon }}</span>
-                        {{ m.label }}
-                    </button>
                 </div>
 
                 <div class="panel-body">
@@ -244,48 +215,6 @@ function timeAgo(ts: number): string {
     background: rgba(255, 107, 107, 0.16);
     border-color: rgba(255, 107, 107, 0.35);
     color: #fff;
-}
-
-.mode-tabs {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    gap: 0.625rem;
-    padding: 0.875rem 1.25rem 0;
-}
-
-.mode-tab {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    justify-content: center;
-    gap: 0.375rem;
-    min-width: 0;
-    padding: 0.625rem 0.375rem;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: var(--ui-radius-sm);
-    background: rgba(255, 255, 255, 0.025);
-    color: #94a3b8;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.mode-tab:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: #e2e8f0;
-}
-
-.mode-tab.active {
-    border-color: rgba(251, 191, 36, 0.45);
-    background: rgba(251, 191, 36, 0.11);
-    color: #fbbf24;
-    box-shadow: 0 0 20px rgba(251, 191, 36, 0.12);
-}
-
-.tab-icon {
-    font-size: 1rem;
 }
 
 .panel-body {

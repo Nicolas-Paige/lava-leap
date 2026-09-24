@@ -1,5 +1,5 @@
 /**
- * 排行榜 API 客户端
+ * 排行榜 API 客户端（统一排行榜）
  */
 
 const API_BASE = '/api';
@@ -56,9 +56,9 @@ export function setPlayerName(name: string): void {
 /**
  * 检查分数是否上榜
  */
-export async function checkScore(mode: string, layer: number): Promise<CheckResponse> {
+export async function checkScore(layer: number): Promise<CheckResponse> {
     try {
-        const res = await fetch(`${API_BASE}/leaderboard/check?mode=${mode}&layer=${layer}`);
+        const res = await fetch(`${API_BASE}/leaderboard/check?layer=${layer}`);
         if (!res.ok) return { qualifies: false, currentRank: -1, total: 0 };
         return await res.json();
     } catch {
@@ -73,18 +73,12 @@ export async function submitScore(params: {
     name: string;
     layer: number;
     characterId: string;
-    mode: string;
 }): Promise<SubmitResponse> {
     try {
         const res = await fetch(`${API_BASE}/leaderboard`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: params.name,
-                layer: params.layer,
-                mode: params.mode,
-                characterId: params.characterId,
-            }),
+            body: JSON.stringify(params),
         });
         if (!res.ok) return { success: false, rank: 0, total: 0 };
         return await res.json();
@@ -94,11 +88,11 @@ export async function submitScore(params: {
 }
 
 /**
- * 获取排行榜
+ * 获取统一排行榜
  */
-export async function fetchLeaderboard(mode: string, limit = 20): Promise<LeaderboardResponse> {
+export async function fetchLeaderboard(limit = 20): Promise<LeaderboardResponse> {
     try {
-        const res = await fetch(`${API_BASE}/leaderboard?mode=${mode}&limit=${limit}`);
+        const res = await fetch(`${API_BASE}/leaderboard?limit=${limit}`);
         if (!res.ok) return { records: [], updatedAt: 0 };
         return await res.json();
     } catch {

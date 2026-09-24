@@ -10,7 +10,6 @@ export const PLATFORMS_PER_LAYER = 4;      // 每层平台数量
 // 移动 / 物理
 export const MOUSE_SENS = 0.002;
 export const MOVE_SPEED = 8;
-export const RUN_SPEED_MULTIPLIER = 1.6;   // Shift 奔跑速度倍率
 export const DASH_JUMP_MULTIPLIER = 1.2;   // 奔跑时跳跃力倍率
 export const GRAVITY = -25;
 export const JUMP_POWER = 13;
@@ -28,6 +27,8 @@ export const PITCH_MAX = Math.PI / 3;   // 最高仰视角（+60°）
 // 岩浆
 export const LAVA_SIZE = 100;
 export const LAVA_RISE_SPEED = 0.8;
+export const LAVA_RISE_SPEED_MAX = 1.8;   // 岩浆速度上限（随层数线性加速到此值）
+export const LAVA_SPEED_RAMP_LAYER = 81;  // 到该层时岩浆速度达到上限（与难度封顶层一致）
 export const LAVA_INITIAL_Y = -8;
 export const LAVA_DEATH_MARGIN = 0.1;
 export const DEATH_DURATION = 1.0;

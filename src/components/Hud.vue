@@ -1,14 +1,33 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from '../composables/useI18n';
 
 const props = defineProps<{
     currentLayer: number;
     bestLayer: number;
     isTouchDevice: boolean;
+    /** 游戏进行中（playing）：只有这个阶段才需要鼠标锁定 */
+    isPlaying: boolean;
 }>();
 
 const { tr } = useI18n();
+
+// 鼠标锁定引导（仅 PC）：Pointer Lock 必须由玩家点击画面才能生效。
+// 显示条件 = 游戏进行中 && 当前没有锁定。首次成功锁定后隐藏；
+// 一旦锁定丢失（按 ESC 暂停、切窗口、Chrome 冷却期内请求失败）就恢复显示，
+// 这样「点继续游戏却拿不回鼠标」的情况玩家会看到提示而不是一头雾水。
+// 暂停 / 设置 / 死亡阶段 isPlaying 为 false，不会在菜单背后冒出来。
+// 移动端 isTouchDevice 为 true，整块不渲染，监听也不注册。
+const pointerLocked = ref(false);
+const onLockChange = () => {
+    pointerLocked.value = document.pointerLockElement !== null;
+};
+onMounted(() => {
+    if (!props.isTouchDevice) document.addEventListener('pointerlockchange', onLockChange);
+});
+onUnmounted(() => {
+    if (!props.isTouchDevice) document.removeEventListener('pointerlockchange', onLockChange);
+});
 
 // 层数等级颜色（越高越炽热）
 const layerColor = computed(() => {
@@ -31,11 +50,11 @@ const layerGlow = computed(() => {
 </script>
 
 <template>
-    <!-- 键盘提示（仅 PC 显示） -->
+    <!-- 鼠标锁定引导（仅 PC，仅在「进行中且未锁定」时出现） -->
     <Transition name="hud-tip">
-        <div v-if="!isTouchDevice" class="hud-tip">
+        <div v-if="!isTouchDevice && isPlaying && !pointerLocked" class="hud-tip">
             <span class="tip-icon">💡</span>
-            {{ tr('keyboardTip') }}
+            {{ tr('tipLockMouse') }}
         </div>
     </Transition>
 
@@ -61,8 +80,8 @@ const layerGlow = computed(() => {
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
-    max-width: min(22rem, calc(100vw - 2rem));
-    padding: 0.625rem 0.875rem;
+    max-width: min(12rem, calc(100vw - 2rem));
+    padding: 0.5rem 0.75rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--ui-radius-sm);
     background: rgba(10, 10, 30, 0.76);
@@ -74,7 +93,6 @@ const layerGlow = computed(() => {
 
 .tip-icon {
     flex: 0 0 auto;
-    margin-top: 0.0625rem;
     font-size: 0.9375rem;
 }
 
@@ -168,7 +186,6 @@ const layerGlow = computed(() => {
 
 @media (max-height: 500px) {
     .hud-tip {
-        max-width: min(18rem, calc(100vw - 2rem));
         font-size: 0.75rem;
         line-height: 1.35;
     }

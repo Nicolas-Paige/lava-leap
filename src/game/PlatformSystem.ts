@@ -129,6 +129,7 @@ export class PlatformSystem {
             minZ: z - half, maxZ: z + half,
             type,
             behavior,
+            isAnchor: placement.isAnchor ?? false,
             disappearTimer: 0,
             spawned: true,
         };

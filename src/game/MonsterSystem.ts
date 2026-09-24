@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import type { Platform } from './types';
+import { paramProgress, lerp } from './difficulty';
 
 // ============== 怪物系统：加载模型 / 在平台上生成 Dino ==============
 
@@ -24,17 +25,32 @@ interface SpawnedDino {
     idleAction: THREE.AnimationAction | null;
 }
 
-// 刷新节奏：前期安全，之后受控随机——至少隔 1 个空层，最多连续空 3 层后必刷
-const DINO_FIRST_SPAWN_LAYER = 3;
-const DINO_FIRST_SPAWN_CHANCES: Record<number, number> = { 3: 0.15, 4: 0.4 };
-const DINO_MIN_SPAWN_GAP = 2;
-const DINO_MAX_SPAWN_GAP = 4;
-const DINO_SPAWN_CHANCES_BY_GAP: Record<number, number> = { 2: 0.15, 3: 0.4 };
+// 刷新节奏：随难度曲线连续变密（前期至少隔 4 层，后期缩到 2 层；概率由 0.15 升到 0.55），81 层封顶
+const DINO_FIRST_SPAWN_LAYER = 5;      // 前 5 层绝对安全
+const DINO_MIN_GAP_EASY = 4;           // 低层最小间隔
+const DINO_MIN_GAP_HARD = 2;           // 高层最小间隔
+const DINO_MAX_SPAWN_GAP = 4;          // 连续空这么多层后必刷一只
+const DINO_CHANCE_EASY = 0.15;
+const DINO_CHANCE_HARD = 0.55;
 const DINO_MODEL_URL = '/models/Monsters/Dino.glb';
 const DINO_PATROL_SPEED = 0.4;   // 巡逻速度（单位/秒）—— 缓慢悠闲
 const DINO_PATROL_MARGIN = 1;  // 距平台边缘的保底距离（不贴边走）
-const DINO_DETECT_RANGE = 20; // 同层时发现玩家的距离（覆盖大平台）
-const DINO_CHASE_SPEED = 1.5; // 追击速度（单位/秒）
+// 发现玩家的距离。原来 20，而螺旋布局下同层簇直径只有 ~13 —— 等于一落到同层必定被发现，
+// 「巡逻」状态永远跑不到，三段状态机空转。收到 8 后，远处的怪会安静巡逻，
+// 玩家可以选择绕开还是硬闯，这才是决策。
+const DINO_DETECT_RANGE = 8;
+// 追击速度。原来 1.5，而玩家移动 8 / 冲刺 12.8 —— 差 5 倍多，怪物永远追不上，
+// 只能当会动的障碍物。现在取玩家移速的一半（7 → 3.5）：仍然追不上满速玩家，
+// 但玩家要在平台上停留、走位、等消失平台时会被顶到，形成实质压迫。
+//
+// 恒定而不随难度提升，有两个原因：
+// 1) 怪物被约束在平台内 size/2 - margin = 1.5 的半径里（3×3 见方），
+//    横穿一次只要 0.75s。3.0 与 5.0 的差别是「1.0s 顶到边 vs 0.6s 顶到边」，
+//    这点差距玩家感知不到，却要为此维护一整套按层定档的逻辑。
+// 2) 速度是隐形属性，玩家看不出这只怪比 30 层前那只快，只会觉得手感飘。
+//    难度增长交给看得见的维度：怪物变密（间隔 4→2 层）、平台变险、岩浆变快。
+//   玩家移速下调时此处要同步下调，保持「玩家速度一半」的关系，否则怪物会相对变强。
+const DINO_CHASE_SPEED = 3.5;
 const DINO_RETURN_SPEED = 0.6; // 返回巡逻路线速度（单位/秒，略快于巡逻）
 
 export class MonsterSystem {
@@ -89,19 +105,19 @@ export class MonsterSystem {
         this._spawnDino(layer, platforms);
     }
 
-    /** 是否应该在当前层生成：保证前期安全，同时避免长期无怪或连续刷怪 */
+    /** 是否应该在当前层生成：密度随层数连续上升，同时保留最小间隔避免连刷 */
     private shouldSpawnOnLayer(layer: number): boolean {
         if (layer < DINO_FIRST_SPAWN_LAYER) return false;
 
-        const gap = layer - this.lastSpawnLayer;
-        if (this.lastSpawnLayer === 0) {
-            if (gap >= DINO_FIRST_SPAWN_LAYER + 2) return true;
-            return Math.random() < (DINO_FIRST_SPAWN_CHANCES[gap] ?? 0);
-        }
+        // 与主难度曲线同源，保证怪物密度和平台/岩浆在同一层一起封顶
+        const t = paramProgress(layer);
+        const minGap = Math.round(lerp(DINO_MIN_GAP_EASY, DINO_MIN_GAP_HARD, t));
+        const chance = lerp(DINO_CHANCE_EASY, DINO_CHANCE_HARD, t);
 
-        if (gap < DINO_MIN_SPAWN_GAP) return false;
+        const gap = layer - this.lastSpawnLayer;
+        if (gap < minGap) return false;
         if (gap >= DINO_MAX_SPAWN_GAP) return true;
-        return Math.random() < (DINO_SPAWN_CHANCES_BY_GAP[gap] ?? 0);
+        return Math.random() < chance;
     }
 
     /** 内部：克隆 Dino 实例并放置到平台上 */
@@ -112,9 +128,16 @@ export class MonsterSystem {
         const layerPlatforms = platforms.filter(p => p.layer === layer);
         if (layerPlatforms.length === 0) return;
 
-        // 优先站上稳定平台，避免地狱模式的怪物随消失平台一起提前退场
-        const stablePlatforms = layerPlatforms.filter(p => p.type === 'normal');
-        const candidates = stablePlatforms.length > 0 ? stablePlatforms : layerPlatforms;
+        // 优先站上稳定平台，避免怪物随消失平台一起提前退场。
+        // 同时避开锚点（贴着螺旋引导点的那个平台）—— 玩家跟着螺旋走时基本就落在它上面，
+        // 怪物堵在那里等于堵死唯一主路线。层的平台数少时再逐级放宽。
+        const stable = layerPlatforms.filter(p => p.type === 'normal');
+        const noAnchor = (list: Platform[]) => list.filter(p => !p.isAnchor);
+        let candidates = noAnchor(stable);
+        if (candidates.length === 0) candidates = stable;
+        if (candidates.length === 0) candidates = noAnchor(layerPlatforms);
+        if (candidates.length === 0) candidates = layerPlatforms;
+
         const platform = candidates[Math.floor(Math.random() * candidates.length)];
         this.lastSpawnLayer = layer;
 

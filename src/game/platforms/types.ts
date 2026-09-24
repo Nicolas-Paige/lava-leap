@@ -44,4 +44,7 @@ export interface PlatformPlacement {
     size: number;
     type: PlatformType;
     behavior?: PlatformBehavior;
+    // 是否为该层的主路线锚点（贴着螺旋引导点的那个平台）。
+    // 玩家跟着螺旋走时基本就落在它上面，怪物系统会避开它，不堵死主路线。
+    isAnchor?: boolean;
 }

@@ -1,38 +1,25 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from '../composables/useI18n';
-import { MODES } from '../game/modes';
-import type { GameMode } from '../game/modes/types';
 
 const props = defineProps<{
     loadingProgress: number;
     loadError: string | null;
-    isTouchDevice: boolean;
 }>();
 
 const emit = defineEmits<{
-    start: [mode: GameMode];
+    start: [];
     settings: [];
 }>();
 
 const { tr } = useI18n();
 
 const started = ref(false);
-const selectedModeId = ref(MODES[0]?.id ?? 'classic');
-
-// 根据设备选择操作提示文案
-const hintText = computed(() =>
-    props.isTouchDevice ? tr('startHintTouch') : tr('startHint')
-);
 
 // 加载失败时重置 started，允许用户重试
 watch(() => props.loadError, (err) => {
     if (err) started.value = false;
 });
-
-const selectedMode = computed<GameMode>(
-    () => MODES.find(m => m.id === selectedModeId.value) ?? MODES[0],
-);
 
 const btnText = computed(() => {
     if (props.loadError) return tr('loadingFailed');
@@ -44,13 +31,13 @@ const btnText = computed(() => {
 function onStart() {
     if (started.value) return;
     started.value = true;
-    emit('start', selectedMode.value);
+    emit('start');
 }
 
 // 浮动粒子
 const particles = ref<{ x: number; y: number; size: number; duration: number; delay: number }[]>([]);
 onMounted(() => {
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 100; i++) {
         particles.value.push({
             x: Math.random() * 100,
             y: Math.random() * 100,
@@ -86,6 +73,22 @@ onMounted(() => {
         <div class="glow glow-2"></div>
         <div class="glow glow-3"></div>
 
+        <!-- 底部岩浆光带 -->
+        <div class="lava-band"></div>
+
+        <!-- 漂浮平台剪影（纯装饰） -->
+        <div class="platforms">
+            <span class="plat plat-1"></span>
+            <span class="plat plat-2"></span>
+            <span class="plat plat-3"></span>
+            <span class="plat plat-4"></span>
+            <span class="plat plat-5"></span>
+            <span class="plat climb plat-6"></span>
+            <span class="plat climb plat-7"></span>
+            <span class="plat climb plat-8"></span>
+            <span class="plat climb plat-9"></span>
+        </div>
+
         <button id="btnStartSettings" :title="tr('settings')" @click="emit('settings')">⚙</button>
 
         <div class="overlay-inner">
@@ -93,29 +96,6 @@ onMounted(() => {
                 <span class="title-text">Lava Leap</span>
                 <span class="title-glow">Lava Leap</span>
             </h1>
-            <p class="hint-text" v-html="hintText.replace(/\n/g, '<br>')"></p>
-
-            <!-- 模式选择 -->
-            <div v-if="MODES.length > 1" class="mode-cards">
-                <div
-                    v-for="mode in MODES"
-                    :key="mode.id"
-                    class="mode-card"
-                    :class="{ active: mode.id === selectedModeId }"
-                    @click="selectedModeId = mode.id"
-                >
-                    <div class="mode-icon">{{ mode.icon }}</div>
-                    <div class="mode-name">{{ tr(mode.name) }}</div>
-                    <div class="mode-desc">{{ tr(mode.description) }}</div>
-                    <div class="mode-card-glow"></div>
-                </div>
-            </div>
-            <!-- 仅一个模式时显示标签 + 描述 -->
-            <div v-else class="single-mode">
-                <span class="mode-icon">{{ selectedMode.icon }}</span>
-                <span class="mode-name">{{ tr(selectedMode.name) }}</span>
-                <span class="mode-desc-inline">{{ tr(selectedMode.description) }}</span>
-            </div>
 
             <button id="startBtn" :disabled="started" @click="onStart">
                 <span class="btn-content">{{ btnText }}</span>
@@ -219,6 +199,92 @@ onMounted(() => {
     50% { opacity: 0.35; transform: translateX(-50%) scale(1.15); }
 }
 
+/* 底部岩浆光带 */
+.lava-band {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    height: clamp(90px, 18vh, 190px);
+    transform-origin: bottom;
+    pointer-events: none;
+    background:
+        radial-gradient(60% 100% at 50% 100%, rgba(255, 90, 30, 0.4), transparent 70%),
+        linear-gradient(180deg, transparent, rgba(255, 60, 20, 0.2) 62%, rgba(255, 130, 45, 0.36));
+    animation: lava-breathe 5s ease-in-out infinite;
+}
+
+/* 岩浆表面亮边 */
+.lava-band::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 190, 90, 0.85),
+        rgba(255, 90, 30, 0.95),
+        rgba(255, 190, 90, 0.85),
+        transparent
+    );
+    animation: rim-pulse 3s ease-in-out infinite;
+}
+
+@keyframes rim-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+@keyframes lava-breathe {
+    0%, 100% { opacity: 0.75; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.07); }
+}
+
+/* 漂浮平台剪影 */
+.platforms {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.plat {
+    position: absolute;
+    display: block;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+    opacity: 0.55;
+    animation: plat-float 7s ease-in-out infinite;
+}
+
+.plat-1 { left: 5%;  bottom: 24%; width: clamp(84px, 11vw, 132px); height: 15px; transform: rotate(-6deg); }
+.plat-2 { right: 6%; bottom: 38%; width: clamp(96px, 13vw, 158px); height: 17px; transform: rotate(5deg);  animation-delay: 1.4s; }
+.plat-3 { left: 11%; top: 20%;    width: clamp(72px, 9vw, 112px);  height: 13px; transform: rotate(4deg);  animation-delay: 2.8s; }
+.plat-4 { right: 12%; top: 27%;   width: clamp(64px, 8vw, 96px);   height: 12px; transform: rotate(-5deg); animation-delay: 4.2s; }
+.plat-5 { left: 42%; top: 13%;    width: clamp(56px, 7vw, 88px);   height: 11px; transform: rotate(-3deg); animation-delay: 5.6s; }
+
+/* 向上的阶梯：暗示"往上跳"，压低存在感只做背景层次 */
+.plat.climb {
+    opacity: 0.3;
+}
+
+.plat-6 { left: 28%; bottom: 10%; width: clamp(70px, 9vw, 104px); height: 12px; transform: rotate(-4deg); animation-delay: 0.8s; }
+.plat-7 { left: 54%; bottom: 20%; width: clamp(62px, 8vw, 92px);  height: 11px; transform: rotate(5deg);  animation-delay: 2.2s; }
+.plat-8 { left: 34%; bottom: 31%; width: clamp(56px, 7vw, 84px);  height: 10px; transform: rotate(-3deg); animation-delay: 3.6s; }
+.plat-9 { left: 56%; bottom: 42%; width: clamp(50px, 6vw, 74px);  height: 9px;  transform: rotate(4deg);  animation-delay: 5s; }
+
+@keyframes plat-float {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -14px; }
+}
+
 #btnStartSettings {
     position: absolute;
     top: max(14px, env(safe-area-inset-top));
@@ -265,8 +331,8 @@ onMounted(() => {
 
 .title {
     position: relative;
-    margin: 0 0 clamp(6px, 1.2vh, 10px);
-    font-size: clamp(32px, min(6vw, 8vh), 56px);
+    margin: 0 0 clamp(18px, 3.6vh, 32px);
+    font-size: clamp(36px, min(6.6vw, 9vh), 62px);
     line-height: 1;
     white-space: nowrap;
 }
@@ -305,131 +371,6 @@ onMounted(() => {
 @keyframes title-glow-pulse {
     0%, 100% { opacity: 0.4; }
     50% { opacity: 0.8; }
-}
-
-.hint-text {
-    max-width: min(560px, 100%);
-    margin: 0 0 clamp(10px, 2vh, 18px);
-    color: rgba(255, 255, 255, 0.58);
-    font-size: clamp(10px, min(1.3vw, 1.8vh), 13px);
-    line-height: 1.65;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
-}
-
-.mode-cards {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: clamp(7px, 1.2vw, 13px);
-    width: 100%;
-    margin-bottom: clamp(12px, 2.5vh, 22px);
-}
-
-.mode-card {
-    position: relative;
-    flex: 0 1 auto;
-    width: clamp(105px, min(13vw, 17vh), 125px);
-    padding: clamp(8px, 1.3vh, 12px) clamp(7px, 1.2vw, 10px);
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: clamp(12px, 1.8vw, 18px);
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    backdrop-filter: blur(12px);
-}
-
-.mode-card-glow {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255, 107, 107, 0.16), rgba(74, 144, 226, 0.16));
-    opacity: 0;
-    transition: opacity 0.25s ease;
-    pointer-events: none;
-}
-
-.mode-card:hover {
-    transform: translateY(-5px);
-    background: rgba(255, 255, 255, 0.09);
-    border-color: rgba(255, 255, 255, 0.24);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.3);
-}
-
-.mode-card:hover .mode-card-glow,
-.mode-card.active .mode-card-glow {
-    opacity: 1;
-}
-
-.mode-card.active {
-    transform: translateY(-3px);
-    background: rgba(255, 107, 107, 0.1);
-    border-color: rgba(255, 107, 107, 0.65);
-    box-shadow: 0 0 35px rgba(255, 107, 107, 0.25), inset 0 0 30px rgba(255, 107, 107, 0.08);
-}
-
-.mode-icon {
-    position: relative;
-    z-index: 1;
-    margin-bottom: clamp(5px, 1vh, 10px);
-    font-size: clamp(21px, min(3vw, 4vh), 28px);
-    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
-}
-
-.mode-name {
-    position: relative;
-    z-index: 1;
-    margin-bottom: clamp(3px, 0.6vh, 5px);
-    font-size: clamp(12px, min(1.4vw, 1.8vh), 15px);
-    font-weight: 700;
-}
-
-.mode-desc {
-    position: relative;
-    z-index: 1;
-    color: rgba(255, 255, 255, 0.55);
-    font-size: clamp(8px, min(1vw, 1.4vh), 10px);
-    line-height: 1.45;
-}
-
-.single-mode {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(7px, 1.5vw, 12px);
-    max-width: min(560px, 100%);
-    margin-bottom: clamp(12px, 2.5vh, 22px);
-    padding: clamp(8px, 1.6vh, 12px) clamp(12px, 2.4vw, 20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.65);
-    font-size: clamp(12px, 1.7vw, 14px);
-    backdrop-filter: blur(12px);
-}
-
-.single-mode .mode-icon {
-    margin: 0;
-    font-size: clamp(21px, 3.5vw, 27px);
-}
-
-.single-mode .mode-name {
-    margin: 0;
-    color: #fff;
-    font-size: clamp(13px, 1.7vw, 16px);
-}
-
-.single-mode .mode-desc-inline {
-    color: rgba(255, 255, 255, 0.45);
-    font-size: clamp(11px, 1.5vw, 13px);
-}
-
-.single-mode .mode-desc-inline::before {
-    content: "·";
-    margin: 0 7px;
-    color: rgba(255, 255, 255, 0.25);
 }
 
 #startBtn {
@@ -507,28 +448,7 @@ onMounted(() => {
 @media (max-height: 700px) {
     .title {
         font-size: clamp(32px, min(7vw, 9vh), 48px);
-    }
-    .hint-text {
-        margin-bottom: clamp(12px, 3vh, 18px);
-        font-size: clamp(8px, min(1vw, 1.4vh), 10px);
-        line-height: 1.5;
-    }
-    .mode-cards {
-        margin-bottom: clamp(12px, 3vh, 18px);
-        gap: clamp(8px, 1.5vw, 14px);
-    }
-    .mode-card {
-        width: clamp(120px, min(17vw, 20vh), 150px);
-        padding: clamp(10px, 2vh, 14px) clamp(8px, 1.5vw, 12px);
-    }
-    .mode-icon {
-        font-size: clamp(25px, min(4vw, 5vh), 34px);
-    }
-    .mode-name {
-        font-size: clamp(13px, min(1.8vw, 2.3vh), 16px);
-    }
-    .mode-desc {
-        font-size: clamp(10px, min(1.2vw, 1.6vh), 12px);
+        margin-bottom: clamp(12px, 2.4vh, 20px);
     }
     #startBtn {
         min-height: clamp(40px, 7vh, 50px);
@@ -550,28 +470,8 @@ onMounted(() => {
         font-size: clamp(32px, 11vw, 52px);
         white-space: normal;
     }
-    .hint-text {
-        font-size: clamp(11px, 3.4vw, 15px);
-    }
-    .mode-card {
-        flex: 1 1 calc(50% - 6px);
-        width: auto;
-        max-width: none;
-    }
     #startBtn {
         font-size: clamp(16px, 5vw, 21px);
-    }
-}
-
-@media (max-width: 380px) {
-    .mode-cards {
-        gap: 8px;
-    }
-    .mode-card {
-        padding: 12px 8px;
-    }
-    .mode-desc {
-        font-size: 10px;
     }
 }
 </style>

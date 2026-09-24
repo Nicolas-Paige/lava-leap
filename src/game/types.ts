@@ -22,6 +22,8 @@ export interface Platform {
     // 平台类型与行为
     type: PlatformType;
     behavior?: PlatformBehavior;
+    // 主路线锚点标记：由生成器写入，怪物生成时会避开它
+    isAnchor?: boolean;
     // 运行时状态
     disappearTimer: number;     // 消失倒计时（>0 表示已触发，倒计时到 0 时消失）
     spawned: boolean;           // 是否已生成（用于动画淡入）

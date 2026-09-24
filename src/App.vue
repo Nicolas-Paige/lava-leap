@@ -8,12 +8,13 @@ import CharacterSelect from './components/CharacterSelect.vue';
 import Hud from './components/Hud.vue';
 import EscMenu from './components/EscMenu.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
+import KeyBindingsPanel from './components/KeyBindingsPanel.vue';
 import TouchControls from './components/TouchControls.vue';
 import LeaderboardPanel from './components/LeaderboardPanel.vue';
+import { releaseKeys } from './composables/useKeyBindings';
 import { checkScore, submitScore, getPlayerName, setPlayerName } from './api/leaderboard';
 import { CHARACTERS } from './game/characters';
 import type { GamePhase } from './game/types';
-import type { GameMode } from './game/modes/types';
 import bgMusicUrl from '../assets/bg-music-8bit.wav';
 
 // canvas + audio 引用（都在顶层，不随 v-if 销毁）
@@ -39,6 +40,11 @@ function togglePause() {
 }
 function openMenu() { game.pauseGame(); }
 function closeMenu() {
+    // 键位面板优先关闭（它是设置的子页面）
+    if (showKeyBindings.value) {
+        closeKeyBindings();
+        return;
+    }
     if (isSettings()) game.closeSettings();
     else game.resumeGame();
 }
@@ -59,13 +65,13 @@ const touchHandlers = useTouchInput({
 });
 
 // ===== 开始游戏 → 进入选人页面 =====
-async function onStart(mode: GameMode) {
+async function onStart() {
     if (IS_TOUCH_DEVICE) document.body.classList.add('touch');
     touchHandlers.resetDash();
     await nextTick();
     if (canvasRef.value) {
         game.initScene();
-        game.enterCharacterSelect(mode);
+        game.enterCharacterSelect();
     }
 }
 
@@ -80,22 +86,33 @@ function onBackFromSelect() {
 }
 
 // ===== 菜单事件 =====
-function onRestart() { touchHandlers.resetDash(); game.restartGame(); }
+function onRestart() { touchHandlers.resetDash(); closeKeyBindings(); game.restartGame(); }
 function onSettings() { game.openSettings(); }
-function onSettingsBack() { game.closeSettings(); }
-function onQuit() { touchHandlers.resetDash(); game.quitGame(); }
+function onSettingsBack() { closeKeyBindings(); game.closeSettings(); }
+function onQuit() { touchHandlers.resetDash(); closeKeyBindings(); game.quitGame(); }
 function onVolumeUpdate(v: number) { game.setVolume(v); }
+
+// ===== 键位设置（设置面板的子页面）=====
+const showKeyBindings = ref(false);
+function onOpenKeyBindings() {
+    if (IS_TOUCH_DEVICE) return;   // 触控设备无键位设置
+    showKeyBindings.value = true;
+}
+function closeKeyBindings() {
+    if (!showKeyBindings.value) return;
+    showKeyBindings.value = false;
+    releaseKeys(game.input.keys);
+}
 
 // ===== 排行榜 =====
 const showLeaderboard = ref(false);
-const leaderboardMode = ref('classic');
 function onOpenLeaderboard() { showLeaderboard.value = true; }
 function onCloseLeaderboard() { showLeaderboard.value = false; }
 
 // ===== 昵称输入（仅上榜时弹出） =====
 const showNameInput = ref(false);
 const playerName = ref('');
-const pendingScore = ref<{ mode: string; bestLayer: number; characterId: string } | null>(null);
+const pendingScore = ref<{ bestLayer: number; characterId: string } | null>(null);
 const pendingRank = ref<number>(0);
 
 async function savePlayerName() {
@@ -108,10 +125,8 @@ async function savePlayerName() {
         name: trimmed,
         layer: pendingScore.value.bestLayer,
         characterId: pendingScore.value.characterId,
-        mode: pendingScore.value.mode,
     });
     if (result.rank > 0) pendingRank.value = result.rank;
-    leaderboardMode.value = pendingScore.value.mode;
     showLeaderboard.value = true;
     pendingScore.value = null;
 }
@@ -119,18 +134,17 @@ async function savePlayerName() {
 // 死亡时：check是否上榜 → 上榜则弹窗（回填昵称）→ 用户确认后提交
 watch(() => game.phase.value, async (newPhase) => {
     if (newPhase !== 'dead') return;
-    const mode = game.currentMode.value?.id || 'classic';
     const layer = game.bestLayer.value;
     if (layer <= 0) return;
 
     // 先检查是否上榜
-    const { qualifies, currentRank } = await checkScore(mode, layer);
+    const { qualifies, currentRank } = await checkScore(layer);
     if (!qualifies) return;
 
     // 上榜了，弹昵称输入框（回填已有昵称）
     pendingRank.value = currentRank;
     const charId = CHARACTERS[game.characterIndex.value]?.id || 'unknown';
-    pendingScore.value = { mode, bestLayer: layer, characterId: charId };
+    pendingScore.value = { bestLayer: layer, characterId: charId };
     playerName.value = getPlayerName();
     showNameInput.value = true;
 });
@@ -161,7 +175,6 @@ const showGameUI = computed(() => !['idle', 'character-select'].includes(game.ph
             v-if="game.phase.value === 'idle'"
             :loading-progress="game.loadingProgress.value"
             :load-error="game.loadError.value"
-            :is-touch-device="IS_TOUCH_DEVICE"
             @start="onStart"
             @settings="onSettings"
         />
@@ -184,6 +197,7 @@ const showGameUI = computed(() => !['idle', 'character-select'].includes(game.ph
             :current-layer="game.currentLayer.value"
             :best-layer="game.bestLayer.value"
             :is-touch-device="IS_TOUCH_DEVICE"
+            :is-playing="game.phase.value === 'playing'"
         />
 
         <!-- ESC / 死亡菜单 -->
@@ -199,7 +213,6 @@ const showGameUI = computed(() => !['idle', 'character-select'].includes(game.ph
         <!-- 排行榜 -->
         <LeaderboardPanel
             :visible="showLeaderboard"
-            :initial-mode="leaderboardMode"
             @close="onCloseLeaderboard"
         />
 
@@ -229,10 +242,19 @@ const showGameUI = computed(() => !['idle', 'character-select'].includes(game.ph
 
         <!-- 设置面板 -->
         <SettingsPanel
-            :visible="game.phase.value === 'settings'"
+            :visible="game.phase.value === 'settings' && !showKeyBindings"
             :volume="game.volume.value"
+            :is-touch-device="IS_TOUCH_DEVICE"
             @update:volume="onVolumeUpdate"
+            @keybindings="onOpenKeyBindings"
             @back="onSettingsBack"
+        />
+
+        <!-- 键位设置 -->
+        <KeyBindingsPanel
+            :visible="game.phase.value === 'settings' && showKeyBindings"
+            :keys="game.input.keys"
+            @back="closeKeyBindings"
         />
 
         <!-- 移动端触控 UI（触控设备始终渲染：竖屏显示旋转提示，横屏显示摇杆） -->

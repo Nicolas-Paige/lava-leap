@@ -2,7 +2,7 @@ import { ref, shallowRef, onUnmounted, type Ref } from 'vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
-    MOUSE_SENS, RUN_SPEED_MULTIPLIER, DASH_JUMP_MULTIPLIER,
+    MOUSE_SENS, DASH_JUMP_MULTIPLIER,
     CAM_DIST, CAM_HEIGHT, CAM_SMOOTH,
     FP_CAMERA_HEIGHT, PITCH_MIN, PITCH_MAX,
     DEATH_DURATION,
@@ -778,8 +778,8 @@ export function useGame(options: UseGameOptions) {
         monsterSystem!.update(delta, pg.position.x, pg.position.y, pg.position.z, playerCurrentLayer.value);
         // 平台动态管理
         platformSystem!.manage(pg.position.y);
-        // 岩浆
-        lavaSystem!.update(delta);
+        // 岩浆（传入最高到达层，让上升速度随难度线性加速）
+        lavaSystem!.update(delta, currentLayer.value);
         if (lavaSystem!.checkDeath(pg.position.y)) onPlayerDeath();
 
         // 怪物碰撞检测（玩家碰到 Dino 触发死亡，原地倒下不沉入岩浆）

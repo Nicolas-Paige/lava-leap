@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
-    LAVA_SIZE, LAVA_RISE_SPEED, LAVA_INITIAL_Y, LAVA_DEATH_MARGIN,
+    LAVA_SIZE, LAVA_RISE_SPEED, LAVA_RISE_SPEED_MAX, LAVA_SPEED_RAMP_LAYER,
+    LAVA_INITIAL_Y, LAVA_DEATH_MARGIN,
     LAVA_UV_SCALE, LAVA_TIME_SCALE,
 } from './constants';
 
@@ -137,7 +138,8 @@ export class LavaSystem {
     readonly uniforms: { [k: string]: THREE.IUniform };
     private readonly mat: THREE.ShaderMaterial;
     private lavaY = LAVA_INITIAL_Y;
-    private riseSpeed = LAVA_RISE_SPEED;
+    private baseRiseSpeed = LAVA_RISE_SPEED;   // 模式给定的基础速度
+    private riseSpeed = LAVA_RISE_SPEED;       // 当前实际速度（随层数加速后）
     private enabled = true;
 
     constructor(scene: THREE.Scene, fogColor: THREE.Color) {
@@ -193,9 +195,17 @@ export class LavaSystem {
         scene.add(this.light);
     }
 
-    // 每帧更新：上升 + 推进 shader 时间
-    update(delta: number): void {
+    /**
+     * 每帧更新：上升 + 推进 shader 时间
+     * playerLayer 传入时，岩浆速度按层数线性加速（0.8 → 1.8 / 81 层），之后封顶。
+     */
+    update(delta: number, playerLayer?: number): void {
         if (this.enabled) {
+            if (playerLayer !== undefined) {
+                const t = Math.max(0, Math.min(1, playerLayer / LAVA_SPEED_RAMP_LAYER));
+                const target = Math.max(this.baseRiseSpeed, LAVA_RISE_SPEED_MAX);
+                this.riseSpeed = this.baseRiseSpeed + (target - this.baseRiseSpeed) * t;
+            }
             this.lavaY += this.riseSpeed * delta;
             this.mesh.position.y = this.lavaY;
             this.light.position.y = this.lavaY + 2;
@@ -218,7 +228,10 @@ export class LavaSystem {
 
     reset(initialY?: number, riseSpeed?: number): void {
         if (initialY !== undefined) this.lavaY = initialY;
-        if (riseSpeed !== undefined) this.riseSpeed = riseSpeed;
+        if (riseSpeed !== undefined) {
+            this.baseRiseSpeed = riseSpeed;
+            this.riseSpeed = riseSpeed;
+        }
         this.mesh.position.y = this.lavaY;
         this.light.position.y = this.lavaY + 2;
         this.uniforms.time.value = 0;

@@ -29,6 +29,10 @@
 - **三维场景**：天空背景 + 雾效 + 方向光阴影，营造立体空间感
 - **GLTF 模型动画**：角色模型内置 Idle / Walk / Run / Jump / Death 动画，根据状态平滑过渡；死亡时播放模型自带的死亡动画
 - **动态平台生成**：随玩家上升不断生成新平台，远离玩家的低层平台自动回收
+- **统一难度曲线（81 层封顶）**：难度随层数「前缓后陡」连续增长（幂曲线，指数 1.8），在 81 层完全封顶后转为纯耐力考验；特殊平台从 9 / 16 层起平滑引入，纵向移动 18 层起按连续概率解锁
+- **螺旋上升布局**：平台围绕每层绕塔心旋转的引导点撒布，整座塔盘旋而上，玩家需持续绕圈而非原地直上
+- **可自定义键位**：设置面板内可重新绑定全部动作按键，「关闭菜单」动作被锁定以防误解绑
+- **怪物（Dino）**：随层数变密出现在平台上，含巡逻 / 追击 / 返回三段状态机；追击速度恒定且低于玩家，靠走位与平台险度施压
 - **Minecraft 风格像素材质**：平台按高度分段（草 → 泥 → 石 → 高山裸岩 → 雪线），每段使用 canvas 程序化生成的 16×16 像素纹理（NearestFilter 硬边像素）
 - **视线遮挡处理**：相机与玩家之间的平台自动半透明化，避免视野被挡
 - **冲刺跳跃**：Shift 冲刺时跳跃，跳得更高更远，是冲层关键
@@ -38,7 +42,7 @@
 - **死亡菜单**：被岩浆烧死后弹出菜单，可选择重新开始或退出游戏
 - **背景音乐**：进入游戏自动播放，退出游戏自动暂停（循环播放）
 - **设置面板**：暂停菜单中可调节音量、切换语言
-- **排行榜系统**：支持经典 / 地狱双模式排行榜（各保留前 20 名），死亡时自动校验是否上榜，同一玩家可多次上榜；基于 EdgeOne KV 存储，提供 check / submit / list 三个 API
+- **排行榜系统**：所有成绩进入同一个前 20 名榜单，死亡时自动校验是否上榜，同一玩家可多次上榜；基于 EdgeOne KV 存储，提供 check / submit / list 三个 API
 - **层数记录**：实时显示当前层与历史最高层
 - **移动端适配**：自动检测触控设备，提供动态浮动摇杆 / 跳跃 / 冲刺切换 / 视角切换 / 暂停按钮，竖屏旋转提示
 
@@ -124,18 +128,19 @@ npm run preview
 - **行为**：岩浆面以恒定速度向上推进，玩家脚底低于岩浆面时触发死亡
 - **死亡流程**：播放角色自带的死亡动画，同时下沉被岩浆吞没（约 1 秒）→ 弹出"你死了"菜单 → 玩家选择"重新开始"（回到起点、岩浆归位、保留最高层数）或"退出游戏"（回开始界面、暂停音乐）
 
-实现位于 [src/game/LavaSystem.ts](file:///d:/work/test/jump-robot/src/game/LavaSystem.ts)。
+实现位于 [src/game/LavaSystem.ts](src/game/LavaSystem.ts)。
 
 ## 平台与材质
 
 ### 平台生成
 
-- 每层 `PLATFORMS_PER_LAYER` 个平台，水平位置在 `RANGE` 范围内随机
+  - 每层 `PLATFORMS_PER_LAYER` 个平台，围绕本层的螺旋引导点（绕塔心旋转）撒布，形成盘旋上升的塔体；水平范围由模式的 `range` 控制
+  - 1–9 层仅普通平台；移动平台从 9 层起、消失平台从 16 层起按难度曲线平滑引入（无硬开关）；纵向移动平台从 18 层起按连续概率解锁，振幅经压缩避免跨层穿插
 - 平台颜色随层数分段，使用 `MC_PALETTE` 调色板
 - 远离玩家 30 层以下的平台自动回收（含 geometry / material / texture dispose）
 - 视线遮挡：相机与玩家之间的平台材质 `opacity` 降至 0.25 并切到 `transparent`
 
-实现位于 [src/game/PlatformSystem.ts](file:///d:/work/test/jump-robot/src/game/PlatformSystem.ts)。
+实现位于 [src/game/PlatformSystem.ts](src/game/PlatformSystem.ts)。
 
 ### Minecraft 风格像素纹理
 
@@ -154,66 +159,67 @@ npm run preview
 - `NearestFilter` 放大模式，保留硬边像素感
 - 平台销毁时调用 `material.map.dispose()` 释放显存
 
-实现位于 [src/game/textures.ts](file:///d:/work/test/jump-robot/src/game/textures.ts)，调色板定义在 [src/game/constants.ts](file:///d:/work/test/jump-robot/src/game/constants.ts)。
+实现位于 [src/game/textures.ts](src/game/textures.ts)，调色板定义在 [src/game/constants.ts](src/game/constants.ts)。
 
 ## 排行榜系统
 
-支持经典 / 地狱双模式独立排行榜，基于 EdgeOne Makers Edge Function + KV 存储实现。
+支持一个统一排行榜，基于 EdgeOne Makers Edge Function + KV 存储实现。
 
 ### 功能
 
-- **双模式排行榜**：经典模式（classic）和地狱模式（inferno）各自独立保存前 20 名
+- **统一排行榜**：所有成绩共同竞争前 20 名，界面只展示一个榜单
 - **死亡自动校验**：玩家死亡时自动调用 check 接口判断是否上榜，上榜后自动提交成绩
 - **昵称系统**：首次上榜弹出昵称输入框，后续自动使用已保存的昵称
-- **同一玩家多次上榜**：同一玩家在同一模式下可以占据多个排名位置
+- **同一玩家多次上榜**：同一玩家可以占据多个排名位置
 
 ### API 接口
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `GET` | `/api/leaderboard/check?mode=classic&layer=12` | 检查指定层数是否上榜，返回 `{ qualifies, currentRank, total }` |
-| `POST` | `/api/leaderboard` | 提交成绩，Body: `{ name, layer, mode, characterId }`，返回 `{ success, rank, total }` |
-| `GET` | `/api/leaderboard?mode=classic&limit=20` | 获取排行榜列表，返回 `{ records, updatedAt }` |
+| `GET` | `/api/leaderboard/check?layer=12` | 检查指定层数是否上榜，返回 `{ qualifies, currentRank, total }` |
+| `POST` | `/api/leaderboard` | 提交成绩，Body: `{ name, layer, characterId }`，返回 `{ success, rank, total }` |
+| `GET` | `/api/leaderboard?limit=20` | 获取排行榜列表，返回 `{ records, updatedAt }` |
 
 ### Edge Function 文件结构
 
-```
+````
 edge-functions/
   api/
     leaderboard.ts              → /api/leaderboard          (GET 列表 + POST 提交)
     leaderboard/
       check.ts                  → /api/leaderboard/check    (GET 校验)
-```
+````
 
 ### 前端文件
 
 - `src/api/leaderboard.ts` — API 客户端（checkScore / submitScore / fetchLeaderboard）
-- `src/components/LeaderboardPanel.vue` — 排行榜面板组件（模式切换、排名列表、刷新）
+- `src/components/LeaderboardPanel.vue` — 统一排行榜面板（排名列表、刷新）
 - `src/App.vue` — 死亡流程中的上榜校验与提交逻辑
 
 ### KV 存储结构
 
-KV key: `leaderboard:{mode}`（如 `leaderboard:classic`），value 为 JSON：
+数据统一存储在 `leaderboard:all`，value 为 JSON：
 
 ```json
 {
   "records": [
-    { "name": "玩家昵称", "layer": 15, "mode": "classic", "characterId": "robot", "timestamp": 1700000000000 }
+    { "name": "玩家昵称", "layer": 15, "characterId": "robot", "timestamp": 1700000000000 }
   ],
   "updatedAt": 1700000000000
 }
 ```
-
 ## 设置面板
 
 暂停菜单中点击"设置"可进入设置面板，目前支持：
+
+  - **键位设置**：可重新绑定移动 / 跳跃 / 冲刺 / 视角 / 暂停 / 关闭菜单等全部动作按键；「关闭菜单」动作被锁定，避免误解绑后无法用键盘关闭菜单
 
 - **音量调节**：滑动条控制背景音乐音量（0–100%，默认 70%）
 - **语言切换**：下拉选择中文 / English，默认中文。语言选择会自动保存到 `localStorage`，下次访问时记住偏好；首次访问会根据浏览器语言自动判断
 
 ### i18n 实现
 
-- 翻译字符串表与状态管理位于 [src/composables/useI18n.ts](file:///d:/work/test/jump-robot/src/composables/useI18n.ts)
+- 翻译字符串表与状态管理位于 [src/composables/useI18n.ts](src/composables/useI18n.ts)
 - 采用模块级单例 `ref`，所有组件 `import { useI18n }` 共享同一实例，无需通过 props 层层传递
 - 新增翻译只需在 `translations` 对象中加一项，再在组件里用 `tr('key')` 引用即可
 - 初始语言检测顺序：`localStorage` → `navigator.language` → 默认 `'zh'`
@@ -233,7 +239,7 @@ lava-leap/
 │       └── leaderboard/
 │           └── check.ts        # /api/leaderboard/check（GET 校验）
 ├── assets/                     # 游戏资源
-│   └── bg-music.mp4            # 背景音乐
+│   └── bg-music-8bit.wav            # 背景音乐
 ├── models/                     # 角色模型
 │   ├── RobotExpressive.glb     # 机器人
 │   ├── Man.glb                 # 休闲男
@@ -256,25 +262,25 @@ lava-leap/
 │   │   ├── textures.ts         # 像素纹理生成
 │   │   ├── PlatformSystem.ts   # 平台生成 / 管理 / 落地检测 / 视线遮挡
 │   │   ├── LavaSystem.ts       # 岩浆着色器 / 上升 / 死亡检测
-│   │   ├── modes/              # 游戏模式（经典 / 地狱）
+│   │   ├── modes/              # 统一游戏模式
 │   │   │   ├── types.ts        # GameMode 接口定义
 │   │   │   ├── registry.ts     # 模式注册表
-│   │   │   ├── classic.mode.ts # 经典模式
-│   │   │   └── inferno.mode.ts # 地狱模式
+│   │   │   ├── classic.mode.ts # 合并后的统一模式
+
 │   │   └── platforms/          # 平台生成器
 │   │       ├── types.ts        # 平台类型与行为定义
-│   │       └── generators/     # 经典生成器 / 混合生成器（移动+消失平台）
+│   │       └── generators/     # 混合生成器 / 螺旋难度生成器
 │   ├── composables/            # Vue 组合式函数
 │   │   ├── useGame.ts          # 主引擎：场景 / 模型 / 主循环 / 控制 API / 选人流程
 │   │   ├── useI18n.ts          # 国际化（中英文切换 + localStorage 持久化）
 │   │   ├── useKeyboardInput.ts # 键盘 + 鼠标输入（PC）
 │   │   └── useTouchInput.ts    # 触控输入（移动端）
 │   └── components/             # UI 组件
-│       ├── StartOverlay.vue    # 开始界面（模式选择）
+│       ├── StartOverlay.vue    # 开始界面
 │       ├── CharacterSelect.vue # 角色选择页面（3D展示 + 左右切换）
-│       ├── Hud.vue             # 层数显示 + 操作提示
+│       ├── Hud.vue             # 层数显示 + 鼠标锁定提示（PC）
 │       ├── EscMenu.vue         # 暂停 / 死亡菜单
-│       ├── LeaderboardPanel.vue# 排行榜面板（双模式切换 + 排名列表）
+│       ├── LeaderboardPanel.vue# 统一排行榜面板（排名列表）
 │       ├── SettingsPanel.vue    # 设置面板
 │       └── TouchControls.vue    # 移动端虚拟摇杆 / 按钮
 ├── LICENSE                     # Apache License 2.0
@@ -283,7 +289,7 @@ lava-leap/
 
 ### 架构分层说明
 
-- **`game/`（引擎层）**：纯 TypeScript，零 Vue 依赖。所有 Three.js 对象、物理、平台、岩浆逻辑都在这里。后续接入其他框架（R3F / TresJS）或做多模式扩展时可整体复用。
+- **`game/`（引擎层）**：纯 TypeScript，零 Vue 依赖。所有 Three.js 对象、物理、平台、岩浆逻辑都在这里。后续接入其他框架（R3F / TresJS）或扩展玩法规则时可整体复用。
 - **`composables/`（组合层）**：Vue 组合式函数，把引擎能力包装成响应式 API。`useGame` 是主入口，`useKeyboardInput` / `useTouchInput` 处理输入。
 - **`components/`（视图层）**：Vue SFC，纯 UI。通过 props / emits 与组合层通信。
 
@@ -302,17 +308,19 @@ lava-leap/
 
 ## 关键参数
 
-游戏内的核心参数定义在 [src/game/constants.ts](file:///d:/work/test/jump-robot/src/game/constants.ts) 中，可按需调整：
+核心参数分布在 [src/game/constants.ts](src/game/constants.ts)（引擎常量）、[src/game/modes/classic.mode.ts](src/game/modes/classic.mode.ts)（模式配置）与 [src/game/difficulty.ts](src/game/difficulty.ts)（难度曲线）中，下表列出常用项（标注实际生效值）：
 
 | 参数 | 默认值 | 含义 |
 | --- | --- | --- |
 | `LAYER_HEIGHT` | `3.0` | 每层平台的高度间隔 |
 | `PLATFORM_SIZE` | `5` | 平台边长 |
 | `PLATFORM_THICK` | `0.5` | 平台厚度 |
-| `RANGE` | `8` | 平台水平随机范围 |
+| `RANGE` | `11` | 平台水平随机范围（实际生效值，classic.mode.ts；螺旋布局需要更大场地） |
 | `PLATFORMS_PER_LAYER` | `4` | 每层平台数量 |
-| `MOVE_SPEED` | `8` | 玩家移动速度 |
-| `RUN_SPEED_MULTIPLIER` | `1.6` | 冲刺速度倍率 |
+| `MOVE_SPEED` | `7` | 玩家移动速度（实际生效值，classic.mode.ts；constants 中保留 8 为回落默认） |
+| `DIFFICULTY_CAP_LAYER` | `81` | 难度封顶层（到达即拉满，之后不再增长） |
+| `DIFFICULTY_CURVE_EXP` | `1.8` | 难度曲线指数（>1 表示前缓后陡） |
+| `DINO_CHASE_SPEED` | `3.5` | 怪物恒定追击速度（玩家移速一半） |
 | `DASH_JUMP_MULTIPLIER` | `1.2` | 冲刺跳跃力倍率 |
 | `GRAVITY` | `-25` | 重力加速度 |
 | `JUMP_POWER` | `13` | 普通跳跃力 |
@@ -347,7 +355,7 @@ export const MC_PALETTE: PaletteSeg[] = [
 
 ## 许可证
 
-本项目基于 [Apache License 2.0](file:///d:/work/test/jump-robot/LICENSE) 开源。
+本项目基于 [Apache License 2.0](LICENSE) 开源。
 
 ---
 
@@ -382,6 +390,10 @@ A 3D jumping mini-game built with Three.js + Vue 3. Pick your favorite character
 - **3D scene**: Sky background + fog + directional light shadows create a sense of spatial depth
 - **GLTF model animation**: Character models have built-in Idle / Walk / Run / Jump / Death animations with smooth state transitions; death plays the model's native death animation
 - **Dynamic platform generation**: New platforms are continuously generated as the player climbs, and distant low-level platforms are automatically recycled
+- **Unified difficulty curve (81-layer cap)**: Difficulty grows continuously with a front-easy / back-steep power curve (exponent 1.8) and fully maxes out at layer 81, after which it becomes a pure endurance test; special platforms ramp in smoothly from layers 9 / 16, and vertical movement unlocks from layer 18 via continuous probability
+- **Spiral ascent layout**: Platforms are scattered around a per-layer guide point that rotates around the tower core, so the whole tower spirals upward — the player must keep circling rather than climbing straight up
+- **Customizable keybindings**: All action keys can be rebound in the settings panel; the "close menu" action is locked to prevent accidental unbinding
+- **Monsters (Dino)**: Spawn more frequently as layers increase, with a patrol / chase / return state machine; chase speed is constant and below the player's, applying pressure through positioning and platform difficulty
 - **Minecraft-style pixel textures**: Platforms are segmented by height (grass → dirt → stone → darkstone → snow), each segment uses a canvas-generated 16×16 pixel texture (NearestFilter for hard pixel edges)
 - **Line-of-sight occlusion**: Platforms between the camera and the player become semi-transparent to avoid blocking the view
 - **Dash jump**: Jumping while dashing with Shift makes you jump higher and farther, which is key to climbing layers
@@ -391,7 +403,7 @@ A 3D jumping mini-game built with Three.js + Vue 3. Pick your favorite character
 - **Death menu**: A menu pops up after being burned by lava, offering options to restart or quit the game
 - **Background music**: Automatically plays when entering the game, pauses when exiting (loops)
 - **Settings panel**: Adjust volume and toggle language from the pause menu
-- **Leaderboard system**: Dual-mode leaderboard (classic / inferno, top 20 each), auto-check on death, same player can appear multiple times; powered by EdgeOne KV with check / submit / list APIs
+- **Leaderboard system**: One unified top-20 leaderboard, auto-check on death, same player can appear multiple times; powered by EdgeOne KV with check / submit / list APIs
 - **Layer tracking**: Real-time display of current layer and historical highest layer
 - **Mobile adaptation**: Auto-detects touch devices, provides dynamic floating joystick / jump / dash toggle / view toggle / pause buttons, portrait orientation hint
 
@@ -477,18 +489,19 @@ A slowly rising lava surface at the bottom — the main failure condition.
 - **Behavior**: The lava surface advances upward at a constant speed, triggering death when the player's feet drop below the lava surface
 - **Death process**: Plays the character's native death animation while sinking into the lava (about 1 second) → "You Died" menu pops up → Player chooses "Restart" (return to start, reset lava, keep highest layer) or "Quit Game" (return to start screen, pause music)
 
-Implementation in [src/game/LavaSystem.ts](file:///d:/work/test/jump-robot/src/game/LavaSystem.ts).
+Implementation in [src/game/LavaSystem.ts](src/game/LavaSystem.ts).
 
 ## Platforms & Materials
 
 ### Platform Generation
 
-- `PLATFORMS_PER_LAYER` platforms per layer, random horizontal positions within `RANGE`
+  - `PLATFORMS_PER_LAYER` platforms per layer, scattered around a per-layer spiral guide point (rotating around the tower core) to form a spiraling tower; the horizontal range is controlled by the mode's `range`
+  - Layers 1-9 use normal platforms only; moving platforms ramp in from layer 9 and disappearing platforms from layer 16 along the difficulty curve (no hard switches); vertical-moving platforms unlock from layer 18 via continuous probability, with amplitude compressed to avoid crossing layers
 - Platform color is segmented by layer number, using the `MC_PALETTE` palette
 - Platforms more than 30 layers below the player are auto-recycled (including geometry / material / texture dispose)
 - Line-of-sight occlusion: platforms between camera and player have material `opacity` reduced to 0.25 and switched to `transparent`
 
-Implementation in [src/game/PlatformSystem.ts](file:///d:/work/test/jump-robot/src/game/PlatformSystem.ts).
+Implementation in [src/game/PlatformSystem.ts](src/game/PlatformSystem.ts).
 
 ### Minecraft-style Pixel Textures
 
@@ -507,66 +520,67 @@ Platform tops use procedurally generated 16×16 pixel textures to simulate a Min
 - `NearestFilter` magnification preserves hard pixel edges
 - `material.map.dispose()` is called when platforms are destroyed to free VRAM
 
-Implementation in [src/game/textures.ts](file:///d:/work/test/jump-robot/src/game/textures.ts); palette defined in [src/game/constants.ts](file:///d:/work/test/jump-robot/src/game/constants.ts).
+Implementation in [src/game/textures.ts](src/game/textures.ts); palette defined in [src/game/constants.ts](src/game/constants.ts).
 
 ## Leaderboard
 
-Dual-mode leaderboard (classic / inferno) powered by EdgeOne Makers Edge Functions + KV storage.
+A single unified leaderboard powered by EdgeOne Makers Edge Functions + KV storage.
 
 ### Features
 
-- **Dual-mode**: Classic and inferno modes each maintain independent top-20 rankings
+- **Unified ranking**: All scores compete for the same top-20 list, and the UI shows one board
 - **Auto-check on death**: Automatically calls the check API to determine if the score qualifies, then submits
 - **Nickname system**: First-time qualifier prompts for a nickname; subsequent submissions use the saved name
-- **Multiple entries**: Same player can occupy multiple spots on the same mode's leaderboard
+- **Multiple entries**: The same player can occupy multiple ranking spots
 
 ### API Endpoints
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/api/leaderboard/check?mode=classic&layer=12` | Check if a layer score qualifies, returns `{ qualifies, currentRank, total }` |
-| `POST` | `/api/leaderboard` | Submit score, Body: `{ name, layer, mode, characterId }`, returns `{ success, rank, total }` |
-| `GET` | `/api/leaderboard?mode=classic&limit=20` | Fetch leaderboard, returns `{ records, updatedAt }` |
+| `GET` | `/api/leaderboard/check?layer=12` | Check if a layer score qualifies, returns `{ qualifies, currentRank, total }` |
+| `POST` | `/api/leaderboard` | Submit score, Body: `{ name, layer, characterId }`, returns `{ success, rank, total }` |
+| `GET` | `/api/leaderboard?limit=20` | Fetch leaderboard, returns `{ records, updatedAt }` |
 
 ### Edge Function File Structure
 
-```
+````
 edge-functions/
   api/
     leaderboard.ts              → /api/leaderboard          (GET list + POST submit)
     leaderboard/
       check.ts                  → /api/leaderboard/check    (GET check)
-```
+````
 
 ### Frontend Files
 
 - `src/api/leaderboard.ts` — API client (checkScore / submitScore / fetchLeaderboard)
-- `src/components/LeaderboardPanel.vue` — Leaderboard panel component (mode tabs, ranking list, refresh)
+- `src/components/LeaderboardPanel.vue` — Unified leaderboard panel (ranking list, refresh)
 - `src/App.vue` — Death flow: qualification check and score submission
 
 ### KV Storage Structure
 
-KV key: `leaderboard:{mode}` (e.g. `leaderboard:classic`), value is JSON:
+Data is stored under `leaderboard:all`. The value is JSON:
 
 ```json
 {
   "records": [
-    { "name": "PlayerName", "layer": 15, "mode": "classic", "characterId": "robot", "timestamp": 1700000000000 }
+    { "name": "PlayerName", "layer": 15, "characterId": "robot", "timestamp": 1700000000000 }
   ],
   "updatedAt": 1700000000000
 }
 ```
-
 ## Settings Panel
 
-Click "Settings" in the pause menu to open the settings panel. Currently supports:
+Click "Settings" in the pause menu to open the settings panel. Currently supports：
+
+  - **Keybindings**: Rebind all action keys (move / jump / dash / view / pause / close menu); the "close menu" action is locked to prevent being accidentally unbound
 
 - **Volume control**: Slider for background music volume (0–100%, default 70%)
 - **Language toggle**: Dropdown to select 中文 / English, default Chinese. The choice is auto-saved to `localStorage` and remembered on next visit; first visit auto-detects from browser language
 
 ### i18n Implementation
 
-- Translation string table and state management live in [src/composables/useI18n.ts](file:///d:/work/test/jump-robot/src/composables/useI18n.ts)
+- Translation string table and state management live in [src/composables/useI18n.ts](src/composables/useI18n.ts)
 - Uses a module-level singleton `ref` — all components `import { useI18n }` share the same instance, no prop drilling needed
 - Adding a translation is as simple as adding an entry to the `translations` object and referencing it with `tr('key')` in components
 - Initial language detection order: `localStorage` → `navigator.language` → default `'zh'`
@@ -586,7 +600,7 @@ lava-leap/
 │       └── leaderboard/
 │           └── check.ts        # /api/leaderboard/check (GET check)
 ├── assets/                     # Game assets
-│   └── bg-music.mp4            # Background music
+│   └── bg-music-8bit.wav            # Background music
 ├── models/                     # Character models
 │   ├── RobotExpressive.glb     # Robot
 │   ├── Man.glb                 # Casual man
@@ -609,25 +623,25 @@ lava-leap/
 │   │   ├── textures.ts         # Pixel texture generation
 │   │   ├── PlatformSystem.ts   # Platform generation / management / landing detection / line-of-sight occlusion
 │   │   ├── LavaSystem.ts       # Lava shader / rising / death detection
-│   │   ├── modes/              # Game modes (Classic / Inferno)
+│   │   ├── modes/              # Unified game mode
 │   │   │   ├── types.ts        # GameMode interface definition
 │   │   │   ├── registry.ts     # Mode registry
-│   │   │   ├── classic.mode.ts # Classic mode
-│   │   │   └── inferno.mode.ts # Inferno mode
+│   │   │   ├── classic.mode.ts # Unified merged mode
+
 │   │   └── platforms/          # Platform generators
 │   │       ├── types.ts        # Platform type & behavior definitions
-│   │       └── generators/     # Classic generator / Mixed generator (moving + disappearing platforms)
+│   │       └── generators/     # Mixed generator / progressive difficulty generator
 │   ├── composables/            # Vue composables
 │   │   ├── useGame.ts          # Main engine: scene / model / main loop / control API / character select flow
 │   │   ├── useI18n.ts          # Internationalization (zh/en toggle + localStorage persistence)
 │   │   ├── useKeyboardInput.ts # Keyboard + mouse input (PC)
 │   │   └── useTouchInput.ts    # Touch input (mobile)
 │   └── components/             # UI components
-│       ├── StartOverlay.vue    # Start screen (mode selection)
+│       ├── StartOverlay.vue    # Start screen
 │       ├── CharacterSelect.vue # Character select screen (3D preview + left/right switch)
-│       ├── Hud.vue             # Layer display + controls hint
+│       ├── Hud.vue             # Layer display + pointer-lock hint (PC)
 │       ├── EscMenu.vue         # Pause / death menu
-│       ├── LeaderboardPanel.vue# Leaderboard panel (dual-mode tabs + ranking list)
+│       ├── LeaderboardPanel.vue# Unified leaderboard panel (ranking list)
 │       ├── SettingsPanel.vue    # Settings panel
 │       └── TouchControls.vue    # Mobile virtual joystick / buttons
 ├── LICENSE                     # Apache License 2.0
@@ -636,7 +650,7 @@ lava-leap/
 
 ### Architecture Notes
 
-- **`game/` (engine layer)**: Pure TypeScript, zero Vue dependency. All Three.js objects, physics, platforms, lava logic live here. Can be reused as a whole when integrating with other frameworks (R3F / TresJS) or building multi-mode extensions.
+- **`game/` (engine layer)**: Pure TypeScript, zero Vue dependency. All Three.js objects, physics, platforms, lava logic live here. Can be reused as a whole when integrating with other frameworks (R3F / TresJS) or extending gameplay rules.
 - **`composables/` (composition layer)**: Vue composables that wrap engine capabilities into reactive APIs. `useGame` is the main entry; `useKeyboardInput` / `useTouchInput` handle input.
 - **`components/` (view layer)**: Vue SFCs, pure UI. Communicate with the composition layer via props / emits.
 
@@ -655,17 +669,19 @@ lava-leap/
 
 ## Key Parameters
 
-The core parameters in the game are defined in [src/game/constants.ts](file:///d:/work/test/jump-robot/src/game/constants.ts) and can be adjusted as needed:
+Core parameters are spread across [src/game/constants.ts](src/game/constants.ts) (engine constants), [src/game/modes/classic.mode.ts](src/game/modes/classic.mode.ts) (mode config), and [src/game/difficulty.ts](src/game/difficulty.ts) (difficulty curve). Common entries are listed below (with effective values noted)：
 
 | Parameter | Default | Description |
 | --- | --- | --- |
 | `LAYER_HEIGHT` | `3.0` | Height interval between platform layers |
 | `PLATFORM_SIZE` | `5` | Platform edge length |
 | `PLATFORM_THICK` | `0.5` | Platform thickness |
-| `RANGE` | `8` | Horizontal random range for platforms |
+| `RANGE` | `11` | Horizontal random range for platforms (effective value, classic.mode.ts; spiral layout needs a larger field) |
 | `PLATFORMS_PER_LAYER` | `4` | Number of platforms per layer |
-| `MOVE_SPEED` | `8` | Player movement speed |
-| `RUN_SPEED_MULTIPLIER` | `1.6` | Dash speed multiplier |
+| `MOVE_SPEED` | `7` | Player movement speed (effective value, classic.mode.ts; constants retains 8 as fallback) |
+| `DIFFICULTY_CAP_LAYER` | `81` | Difficulty cap layer (maxed on arrival, then constant) |
+| `DIFFICULTY_CURVE_EXP` | `1.8` | Difficulty curve exponent (>1 = easy-front / steep-back) |
+| `DINO_CHASE_SPEED` | `3.5` | Constant monster chase speed (half the player's speed) |
 | `DASH_JUMP_MULTIPLIER` | `1.2` | Dash jump force multiplier |
 | `GRAVITY` | `-25` | Gravity acceleration |
 | `JUMP_POWER` | `13` | Normal jump force |
@@ -700,4 +716,4 @@ export const MC_PALETTE: PaletteSeg[] = [
 
 ## License
 
-This project is open-sourced under the [Apache License 2.0](file:///d:/work/test/jump-robot/LICENSE).
+This project is open-sourced under the [Apache License 2.0](LICENSE).

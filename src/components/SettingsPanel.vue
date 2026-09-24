@@ -4,11 +4,13 @@ import { useI18n, type Language } from '../composables/useI18n';
 defineProps<{
     visible: boolean;
     volume: number;
+    isTouchDevice: boolean;
 }>();
 
 const emit = defineEmits<{
     'update:volume': [v: number];
     back: [];
+    keybindings: [];
 }>();
 
 const { language, setLanguage, tr } = useI18n();
@@ -66,6 +68,13 @@ function onLanguageChange(e: Event) {
                     </div>
                 </div>
 
+                <div v-if="!isTouchDevice" class="setting-group">
+                    <button class="ui-btn ui-btn-info settings-entry" @click="emit('keybindings')">
+                        <span class="ui-btn-icon">⌨️</span>
+                        {{ tr('keybindOpen') }}
+                    </button>
+                </div>
+
                 <button class="ui-btn ui-btn-subtle settings-back" @click="emit('back')">
                     <span class="ui-btn-icon">←</span>
                     {{ tr('back') }}
@@ -76,6 +85,20 @@ function onLanguageChange(e: Event) {
 </template>
 
 <style scoped>
+.ui-card {
+    width: min(21rem, calc(100vw - 1.5rem));
+    padding: 1.125rem 1.25rem;
+}
+
+.ui-title {
+    margin-bottom: 0.875rem;
+    font-size: 1.375rem;
+}
+
+.ui-btn {
+    min-height: 2.5rem;
+}
+
 .settings-glow {
     position: absolute;
     top: -2.5rem;
@@ -90,8 +113,8 @@ function onLanguageChange(e: Event) {
 .setting-group {
     position: relative;
     z-index: 1;
-    margin-bottom: 1.25rem;
-    padding-bottom: 1rem;
+    margin-bottom: 0.875rem;
+    padding-bottom: 0.75rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
@@ -102,15 +125,20 @@ function onLanguageChange(e: Event) {
 }
 
 .settings-back {
-    margin-top: 1.25rem;
+    margin-top: 0.875rem;
+}
+
+.settings-entry {
+    min-height: 2.25rem;
+    font-size: 0.9375rem;
 }
 
 .setting-row {
     display: flex;
     align-items: center;
-    gap: 0.875rem;
+    gap: 0.75rem;
     color: var(--ui-text);
-    font-size: 1rem;
+    font-size: 0.9375rem;
 }
 
 .setting-row label {
