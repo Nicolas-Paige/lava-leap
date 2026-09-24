@@ -143,11 +143,11 @@ npm run preview
 
 | 层数范围 | 色段 | 含义 |
 | --- | --- | --- |
-| 0-6 | `#7cba34` 草绿 | 草地地表 |
-| 7-14 | `#866043` 泥棕 | 草下土层 |
-| 15-28 | `#7d7d7d` 石灰 | 岩石层 |
-| 29-45 | `#4a4a5a` 高山裸岩 | 高海拔裸岩 |
-| 46+ | `#ffffff` 雪线 | 顶部雪线 |
+| 0-9 | `#7cba34` 草绿 | 草地地表 |
+| 10-22 | `#866043` 泥棕 | 草下土层 |
+| 23-44 | `#7d7d7d` 石灰 | 岩石层 |
+| 45-71 | `#4a4a5a` 高山裸岩 | 高海拔裸岩 |
+| 72+ | `#ffffff` 雪线 | 顶部雪线 |
 
 - 每色段预生成 `PIXEL_TEX_VARIANTS=4` 个纹理变体，避免平台视觉雷同
 - 纹理生成：4×4 cell，每 cell 基础色 ±15% 亮度，cell 内每像素再 ±5% 微扰
@@ -337,10 +337,10 @@ lava-leap/
 
 ```ts
 export const MC_PALETTE: PaletteSeg[] = [
-    { maxLayer: 6,  base: { r: 0x7c, g: 0xba, b: 0x34 }, name: 'grass' },
-    { maxLayer: 14, base: { r: 0x86, g: 0x60, b: 0x43 }, name: 'dirt' },
-    { maxLayer: 28, base: { r: 0x7d, g: 0x7d, b: 0x7d }, name: 'stone' },
-    { maxLayer: 45, base: { r: 0x4a, g: 0x4a, b: 0x5a }, name: 'darkstone' },
+    { maxLayer: 9,  base: { r: 0x7c, g: 0xba, b: 0x34 }, name: 'grass' },
+    { maxLayer: 22, base: { r: 0x86, g: 0x60, b: 0x43 }, name: 'dirt' },
+    { maxLayer: 44, base: { r: 0x7d, g: 0x7d, b: 0x7d }, name: 'stone' },
+    { maxLayer: 71, base: { r: 0x4a, g: 0x4a, b: 0x5a }, name: 'darkstone' },
     { maxLayer: Infinity, base: { r: 0xff, g: 0xff, b: 0xff }, name: 'snow' },
 ];
 ```
@@ -496,11 +496,11 @@ Platform tops use procedurally generated 16×16 pixel textures to simulate a Min
 
 | Layer Range | Segment | Meaning |
 | --- | --- | --- |
-| 0-6 | `#7cba34` grass | Grassland surface |
-| 7-14 | `#866043` dirt | Soil below grass |
-| 15-28 | `#7d7d7d` stone | Rock layer |
-| 29-45 | `#4a4a5a` darkstone | High-altitude bare rock |
-| 46+ | `#ffffff` snow | Snow line at top |
+| 0-9 | `#7cba34` grass | Grassland surface |
+| 10-22 | `#866043` dirt | Soil below grass |
+| 23-44 | `#7d7d7d` stone | Rock layer |
+| 45-71 | `#4a4a5a` darkstone | High-altitude bare rock |
+| 72+ | `#ffffff` snow | Snow line at top |
 
 - Each segment pre-generates `PIXEL_TEX_VARIANTS=4` texture variants to avoid visual repetition across platforms
 - Texture generation: 4×4 cells, each cell base color ±15% brightness, then per-pixel ±5% noise within cell
@@ -690,10 +690,10 @@ The core parameters in the game are defined in [src/game/constants.ts](file:///d
 
 ```ts
 export const MC_PALETTE: PaletteSeg[] = [
-    { maxLayer: 6,  base: { r: 0x7c, g: 0xba, b: 0x34 }, name: 'grass' },
-    { maxLayer: 14, base: { r: 0x86, g: 0x60, b: 0x43 }, name: 'dirt' },
-    { maxLayer: 28, base: { r: 0x7d, g: 0x7d, b: 0x7d }, name: 'stone' },
-    { maxLayer: 45, base: { r: 0x4a, g: 0x4a, b: 0x5a }, name: 'darkstone' },
+    { maxLayer: 9,  base: { r: 0x7c, g: 0xba, b: 0x34 }, name: 'grass' },
+    { maxLayer: 22, base: { r: 0x86, g: 0x60, b: 0x43 }, name: 'dirt' },
+    { maxLayer: 44, base: { r: 0x7d, g: 0x7d, b: 0x7d }, name: 'stone' },
+    { maxLayer: 71, base: { r: 0x4a, g: 0x4a, b: 0x5a }, name: 'darkstone' },
     { maxLayer: Infinity, base: { r: 0xff, g: 0xff, b: 0xff }, name: 'snow' },
 ];
 ```

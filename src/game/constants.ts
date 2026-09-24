@@ -35,18 +35,21 @@ export const LAVA_UV_SCALE = { x: 10.0, y: 10.0 };
 export const LAVA_TIME_SCALE = 1.0;
 
 // Minecraft 风格调色板：按高度分段（草 → 泥 → 石 → 高山裸岩 → 雪线）
+// top: 顶面覆盖色（所有色段均配置，侧面顶部 1/4 使用同一颜色）
+// base: 侧面+底面颜色
 export interface PaletteSeg {
     maxLayer: number;
     base: { r: number; g: number; b: number };
+    top: { r: number; g: number; b: number };  // 顶面覆盖色（草地=绿，雪线=白）
     name: string;
 }
 
 export const MC_PALETTE: PaletteSeg[] = [
-    { maxLayer: 6,  base: { r: 0x7c, g: 0xba, b: 0x34 }, name: 'grass' },
-    { maxLayer: 14, base: { r: 0x86, g: 0x60, b: 0x43 }, name: 'dirt' },
-    { maxLayer: 28, base: { r: 0x7d, g: 0x7d, b: 0x7d }, name: 'stone' },
-    { maxLayer: 45, base: { r: 0x4a, g: 0x4a, b: 0x5a }, name: 'darkstone' },
-    { maxLayer: Infinity, base: { r: 0xff, g: 0xff, b: 0xff }, name: 'snow' },
+    { maxLayer: 9,  base: { r: 0x86, g: 0x60, b: 0x43 }, top: { r: 0x7c, g: 0xba, b: 0x34 }, name: 'grass' },
+    { maxLayer: 22, base: { r: 0x86, g: 0x60, b: 0x43 }, top: { r: 0x9a, g: 0x70, b: 0x4f }, name: 'dirt' },
+    { maxLayer: 44, base: { r: 0x7d, g: 0x7d, b: 0x7d }, top: { r: 0x96, g: 0x96, b: 0x96 }, name: 'stone' },
+    { maxLayer: 71, base: { r: 0x4a, g: 0x4a, b: 0x5a }, top: { r: 0x62, g: 0x62, b: 0x74 }, name: 'darkstone' },
+    { maxLayer: Infinity, base: { r: 0x7d, g: 0x7d, b: 0x7d }, top: { r: 0xff, g: 0xff, b: 0xff }, name: 'snow' },
 ];
 
 // 像素纹理

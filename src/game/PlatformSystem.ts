@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PLATFORM_THICK } from './constants';
-import { getLayerTexture } from './textures';
+import { getLayerTextures } from './textures';
 import type { Platform } from './types';
 import type { PlatformPlacement, PlatformType } from './platforms/types';
 import type { PlatformGenerator, GameModeConfig } from './modes/types';
@@ -69,23 +69,50 @@ export class PlatformSystem {
         // 按 size 单独创建几何体（避免影响默认 geo 的引用计数）
         const useGeo = new THREE.BoxGeometry(size, PLATFORM_THICK, size);
 
-        const tex = getLayerTexture(layer);
+        // 获取三面纹理（顶面/侧面/底面）
+        const texSet = getLayerTextures(layer);
         const repeat = Math.max(1, Math.round(size / 1.5));
-        tex.repeat.set(repeat, repeat);
+        // 侧面纹理 Y 方向不重复（绿色只在顶部出现一次，不上下循环）
+        texSet.top.repeat.set(repeat, repeat);
+        texSet.side.repeat.set(repeat, 1);
+        texSet.bottom.repeat.set(repeat, repeat);
 
         const tint = TYPE_COLOR_TINT[type];
-        const mat = new THREE.MeshLambertMaterial({
-            map: tint === null ? tex : tex.clone(),
-            color: tint === null ? 0xffffff : tint,
+        const tintColor = tint ?? 0xffffff;
+
+        // 创建 6 面材质：[+X, -X, +Y(top), -Y(bottom), +Z, -Z]
+        // 侧面用 side 纹理，顶面用 top 纹理，底面用 bottom 纹理
+        const makeMat = (tex: THREE.CanvasTexture) => new THREE.MeshLambertMaterial({
+            map: tex.clone(),
+            color: tintColor,
             transparent: true,
             opacity: 1.0,
         });
-        // 染色类型用 clone 的纹理，避免和 normal 平台共享 repeat
-        if (tint !== null && mat.map) {
-            mat.map.repeat.set(repeat, repeat);
-        }
+        const sideMat = makeMat(texSet.side);
+        const topMat = makeMat(texSet.top);
+        const bottomMat = makeMat(texSet.bottom);
+        // clone 后各自独立设 repeat
+        if (sideMat.map) sideMat.map.repeat.set(repeat, 1);
+        if (topMat.map) topMat.map.repeat.set(repeat, repeat);
+        if (bottomMat.map) bottomMat.map.repeat.set(repeat, repeat);
+        // 释放原始 texSet（clone 已完成）
+        texSet.top.dispose();
+        texSet.side.dispose();
+        texSet.bottom.dispose();
 
-        const mesh = new THREE.Mesh(useGeo, mat);
+        // BoxGeometry 面顺序: 0=+X, 1=-X, 2=+Y(top), 3=-Y(bottom), 4=+Z, 5=-Z
+        const materials: THREE.MeshLambertMaterial[] = [
+            sideMat, sideMat,     // 左右侧面
+            topMat,                // 顶面
+            bottomMat,             // 底面
+            sideMat.clone(),       // 前后侧面（clone 以便独立 opacity）
+            sideMat.clone(),
+        ];
+        // clone 的侧面材质也要设 repeat（Y 不重复）
+        if (materials[4].map) materials[4].map.repeat.set(repeat, 1);
+        if (materials[5].map) materials[5].map.repeat.set(repeat, 1);
+
+        const mesh = new THREE.Mesh(useGeo, materials);
         const topY = layer * (this.modeConfig?.layerHeight ?? 3.0);
         mesh.position.set(x, topY - PLATFORM_THICK / 2, z);
         mesh.castShadow = true;
@@ -94,7 +121,7 @@ export class PlatformSystem {
 
         const half = size / 2;
         const p: Platform = {
-            mesh, material: mat,
+            mesh, material: materials,
             x, z,
             baseX: x, baseZ: z, baseY: topY,
             layer, size, topY,
@@ -211,10 +238,10 @@ export class PlatformSystem {
                     // 闪烁频率随时间加快
                     const blinkSpeed = 10 + (0.5 - ratio) * 30;
                     const blink = 0.5 + 0.5 * Math.sin(performance.now() * 0.001 * blinkSpeed);
-                    p.material.opacity = 0.3 + 0.7 * blink * ratio * 2;
+                    this.setPlatformOpacity(p, 0.3 + 0.7 * blink * ratio * 2);
                 } else {
                     // 前半段用 lerp 平滑过渡到 1.0，避免被踩上瞬间从视线遮挡值突变
-                    p.material.opacity += (1.0 - p.material.opacity) * 0.2;
+                    this.setPlatformOpacity(p, p.material[0].opacity + (1.0 - p.material[0].opacity) * 0.2);
                 }
 
                 if (p.disappearTimer <= 0) {
@@ -229,12 +256,24 @@ export class PlatformSystem {
         this.updateShards(delta);
     }
 
+    // 批量设置平台所有面透明度
+    private setPlatformOpacity(p: Platform, value: number): void {
+        for (const m of p.material) m.opacity = value;
+    }
+
+    // 释放平台所有材质 + 纹理
+    private disposePlatformMaterials(p: Platform): void {
+        for (const m of p.material) {
+            if (m.map) m.map.dispose();
+            m.dispose();
+        }
+    }
+
     // 移除单个平台
     removePlatform(p: Platform): void {
         this.scene.remove(p.mesh);
         p.mesh.geometry.dispose();
-        if (p.material.map) p.material.map.dispose();
-        p.material.dispose();
+        this.disposePlatformMaterials(p);
         const idx = this.platforms.indexOf(p);
         if (idx >= 0) this.platforms.splice(idx, 1);
         this.onPlatformRemoved?.(p);
@@ -353,8 +392,7 @@ export class PlatformSystem {
         for (const p of this.platforms) {
             this.scene.remove(p.mesh);
             p.mesh.geometry.dispose();
-            if (p.material.map) p.material.map.dispose();
-            p.material.dispose();
+            this.disposePlatformMaterials(p);
         }
         this.platforms.length = 0;
         this.highestGeneratedLayer = 0;
@@ -391,7 +429,7 @@ export class PlatformSystem {
 
         for (const p of this.platforms) {
             if (p.layer === 0) {
-                p.material.opacity = 1.0;
+                this.setPlatformOpacity(p, 1.0);
                 continue;
             }
             // 已在消失倒计时的平台不改 opacity（让消失闪烁动画自然过渡）
@@ -403,7 +441,7 @@ export class PlatformSystem {
                 targetOpacity = Math.max(0.6, targetOpacity);  // 染色平台最低 0.6
             }
             // lerp 平滑过渡
-            p.material.opacity += (targetOpacity - p.material.opacity) * 0.2;
+            this.setPlatformOpacity(p, p.material[0].opacity + (targetOpacity - p.material[0].opacity) * 0.2);
         }
     }
 

@@ -6,7 +6,7 @@ import type { PlatformType, PlatformBehavior } from './platforms/types';
 // 平台对象（物理 + 渲染）
 export interface Platform {
     mesh: THREE.Mesh;
-    material: THREE.MeshLambertMaterial;  // 强类型引用，避免 Material | Material[] 联合
+    material: THREE.MeshLambertMaterial[];  // 6 面材质数组（顶/底/侧各异）
     x: number;                  // 当前 x（移动平台会变）
     z: number;                  // 当前 z（移动平台会变）
     baseX: number;              // 生成时的中心 x（移动平台振动的中心）

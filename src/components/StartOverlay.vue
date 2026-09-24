@@ -50,7 +50,7 @@ function onStart() {
 // 浮动粒子
 const particles = ref<{ x: number; y: number; size: number; duration: number; delay: number }[]>([]);
 onMounted(() => {
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 80; i++) {
         particles.value.push({
             x: Math.random() * 100,
             y: Math.random() * 100,
@@ -253,7 +253,7 @@ onMounted(() => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: min(560px, calc(100vw - 32px));
+    width: min(640px, calc(100vw - 32px));
     max-height: calc(100vh - 32px);
     max-height: calc(100dvh - 32px);
     text-align: center;
@@ -266,7 +266,7 @@ onMounted(() => {
 .title {
     position: relative;
     margin: 0 0 clamp(6px, 1.2vh, 10px);
-    font-size: clamp(28px, min(5vw, 7vh), 40px);
+    font-size: clamp(32px, min(6vw, 8vh), 56px);
     line-height: 1;
     white-space: nowrap;
 }
