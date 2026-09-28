@@ -4,6 +4,7 @@ import { useGame, IS_TOUCH_DEVICE } from './composables/useGame';
 import { useKeyboardInput } from './composables/useKeyboardInput';
 import { useTouchInput } from './composables/useTouchInput';
 import StartOverlay from './components/StartOverlay.vue';
+import IntroCinematicOverlay from './components/IntroCinematic.vue';
 import CharacterSelect from './components/CharacterSelect.vue';
 import Hud from './components/Hud.vue';
 import EscMenu from './components/EscMenu.vue';
@@ -13,8 +14,11 @@ import TouchControls from './components/TouchControls.vue';
 import LeaderboardPanel from './components/LeaderboardPanel.vue';
 import { releaseKeys } from './composables/useKeyBindings';
 import { checkScore, submitScore, getPlayerName, setPlayerName } from './api/leaderboard';
+import { useI18n } from './composables/useI18n';
 import { CHARACTERS } from './game/characters';
 import type { GamePhase } from './game/types';
+
+const { tr } = useI18n();
 import bgMusicUrl from '../assets/bg-music-8bit.wav';
 
 // canvas + audio 引用（都在顶层，不随 v-if 销毁）
@@ -75,9 +79,9 @@ async function onStart() {
     }
 }
 
-// ===== 选人页面确认 → 正式进入游戏 =====
+// ===== 选人页面确认 → 开场 CG → 播完自动进入游戏 =====
 function onConfirmCharacter() {
-    game.confirmCharacter();
+    game.playIntro();          // CG 播完会自行进入 playing
 }
 
 // ===== 选人页面返回 → 回到开始界面 =====
@@ -161,7 +165,7 @@ onUnmounted(() => {
     window.removeEventListener('resize', onResize);
 });
 
-const showGameUI = computed(() => !['idle', 'character-select'].includes(game.phase.value));
+const showGameUI = computed(() => !['idle', 'intro', 'character-select'].includes(game.phase.value));
 </script>
 
 <template>
@@ -177,6 +181,15 @@ const showGameUI = computed(() => !['idle', 'character-select'].includes(game.ph
             :load-error="game.loadError.value"
             @start="onStart"
             @settings="onSettings"
+        />
+
+        <!-- 开场 CG 覆盖层（黑边 / 字幕 / 标题 / 跳过） -->
+        <IntroCinematicOverlay
+            v-if="game.phase.value === 'intro'"
+            :subtitle="game.introState.value.subtitle"
+            :title-visible="game.introState.value.titleVisible"
+            :fade="game.introState.value.fade"
+            @skip="game.skipIntro()"
         />
 
         <!-- 角色选择页面 -->
@@ -221,20 +234,22 @@ const showGameUI = computed(() => !['idle', 'character-select'].includes(game.ph
             <div v-if="showNameInput" class="name-input-overlay" @click.self="savePlayerName">
                 <div class="name-input-card">
                     <div class="name-card-glow"></div>
-                    <h3 class="name-title">🎉 恭喜上榜！</h3>
-                    <p class="name-desc">你的成绩排在第 <span class="rank-num">{{ pendingRank }}</span> 名</p>
+                    <h3 class="name-title">{{ tr('nameInputTitle') }}</h3>
+                    <p class="name-desc">
+                        {{ tr('nameInputDesc').replace('{rank}', String(pendingRank)) }}
+                    </p>
                     <input
                         v-model="playerName"
                         type="text"
                         maxlength="20"
-                        placeholder="输入昵称..."
+                        :placeholder="tr('nameInputPlaceholder')"
                         class="name-input"
                         @keyup.enter="savePlayerName"
                         autofocus
                     />
                     <button class="name-confirm-btn" @click="savePlayerName" :disabled="!playerName.trim()">
                         <span class="btn-icon">🏆</span>
-                        确认并上榜
+                        {{ tr('nameInputConfirm') }}
                     </button>
                 </div>
             </div>
@@ -344,11 +359,6 @@ canvas {
     color: var(--ui-text-dim);
     font-size: 0.9375rem;
     line-height: 1.5;
-}
-
-.rank-num {
-    color: var(--ui-accent-gold);
-    font-weight: 700;
 }
 
 .name-input {

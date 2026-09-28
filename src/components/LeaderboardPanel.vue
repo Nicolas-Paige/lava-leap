@@ -47,10 +47,11 @@ function medalFor(index: number): string {
 function timeAgo(ts: number): string {
     if (!ts) return '';
     const diff = Date.now() - ts;
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-    return `${Math.floor(diff / 86400000)}天前`;
+    // 单位文案随语言走（中文「N分钟前」，英文「Nm ago」）
+    if (diff < 60000) return tr('timeJustNow');
+    if (diff < 3600000) return tr('timeMinutesAgo').replace('{n}', String(Math.floor(diff / 60000)));
+    if (diff < 86400000) return tr('timeHoursAgo').replace('{n}', String(Math.floor(diff / 3600000)));
+    return tr('timeDaysAgo').replace('{n}', String(Math.floor(diff / 86400000)));
 }
 </script>
 
@@ -64,7 +65,7 @@ function timeAgo(ts: number): string {
                 <div class="panel-header">
                     <h2 class="panel-title">
                         <span class="title-trophy">🏆</span>
-                        {{ tr('leaderboard') || '排行榜' }}
+                        {{ tr('leaderboard') }}
                     </h2>
                     <button class="close-btn" @click="emit('close')">✕</button>
                 </div>
@@ -72,12 +73,12 @@ function timeAgo(ts: number): string {
                 <div class="panel-body">
                     <div v-if="loading" class="loading">
                         <div class="loading-spinner"></div>
-                        <span>加载中...</span>
+                        <span>{{ tr('loadingProgress') }}</span>
                     </div>
                     <div v-else-if="records.length === 0" class="empty">
                         <div class="empty-icon">🎮</div>
-                        <div class="empty-text">暂无记录</div>
-                        <div class="empty-hint">成为第一个上榜的玩家！</div>
+                        <div class="empty-text">{{ tr('lbEmpty') }}</div>
+                        <div class="empty-hint">{{ tr('lbEmptyHint') }}</div>
                     </div>
                     <div v-else class="rank-list">
                         <TransitionGroup name="rank-item" tag="div">
@@ -97,7 +98,7 @@ function timeAgo(ts: number): string {
                                 </div>
                                 <div class="rank-layer">
                                     <span class="layer-number">{{ record.layer }}</span>
-                                    <span class="layer-label">层</span>
+                                    <span class="layer-label">{{ tr('layerUnit') }}</span>
                                 </div>
                             </div>
                         </TransitionGroup>
@@ -107,10 +108,10 @@ function timeAgo(ts: number): string {
                 <div class="panel-footer">
                     <button class="refresh-btn" @click="loadLeaderboard" :disabled="loading">
                         <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
-                        {{ loading ? '刷新中...' : '刷新' }}
+                        {{ loading ? tr('lbRefreshing') : tr('lbRefresh') }}
                     </button>
                     <div v-if="records.length > 0" class="record-count">
-                        共 {{ records.length }} 条记录
+                        {{ tr('lbCount').replace('{n}', String(records.length)) }}
                     </div>
                 </div>
             </div>

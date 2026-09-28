@@ -79,14 +79,14 @@ onUnmounted(() => {
     >
         <!-- 顶部标题 + 返回 -->
         <div class="cs-top">
-            <button class="cs-back" @click="emit('back')" title="返回">←</button>
-            <h2 class="cs-title">选择角色</h2>
+            <button class="cs-back" @click="emit('back')" :title="tr('back')">←</button>
+            <h2 class="cs-title">{{ tr('selectCharacter') }}</h2>
             <div class="cs-placeholder"></div>
         </div>
 
         <!-- 左右箭头 -->
-        <button class="cs-arrow cs-arrow-left" @click="emit('prev')" title="上一个">‹</button>
-        <button class="cs-arrow cs-arrow-right" @click="emit('next')" title="下一个">›</button>
+        <button class="cs-arrow cs-arrow-left" @click="emit('prev')" :title="tr('prevChar')">‹</button>
+        <button class="cs-arrow cs-arrow-right" @click="emit('next')" :title="tr('nextChar')">›</button>
 
         <!-- 角色指示器（小圆点） -->
         <div class="cs-dots">
@@ -101,13 +101,13 @@ onUnmounted(() => {
 
         <!-- 加载中提示 -->
         <div v-if="showLoading" class="cs-loading">
-            加载中... {{ loadingProgress }}%
+            {{ tr('loadingProgress') }} {{ loadingProgress }}%
         </div>
 
         <!-- 底部信息 + 按钮 -->
         <div class="cs-bottom">
             <button class="cs-confirm" @click="emit('confirm')">
-                立即出发
+                {{ tr('startNow') }}
             </button>
         </div>
     </div>

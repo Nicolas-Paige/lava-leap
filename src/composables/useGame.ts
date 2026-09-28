@@ -10,6 +10,7 @@ import {
 import { PlatformSystem } from '../game/PlatformSystem';
 import { LavaSystem } from '../game/LavaSystem';
 import { MonsterSystem } from '../game/MonsterSystem';
+import { IntroCinematic, type IntroState } from '../game/IntroCinematic';
 import { disposePixelTextures } from '../game/textures';
 import type { GamePhase, InputKeys, DeathMaterialRecord, CameraMode } from '../game/types';
 import type { GameMode } from '../game/modes/types';
@@ -36,6 +37,8 @@ export function useGame(options: UseGameOptions) {
     const loadingProgress = ref(0);
     const loadError = ref<string | null>(null);
     const characterIndex = ref(0);  // 当前选中角色索引（响应式，给UI用）
+    // 开场 CG 状态（每帧由 IntroCinematic 写入，供 overlay 渲染字幕/黑场/标题）
+    const introState = ref<IntroState>({ progress: 0, subtitle: -1, titleVisible: false, fade: 1 });
 
     // ===== Three.js 对象（shallowRef 避免响应式包装） =====
     const scene = shallowRef<THREE.Scene | null>(null);
@@ -44,6 +47,7 @@ export function useGame(options: UseGameOptions) {
     const playerGroup = shallowRef<THREE.Group | null>(null);
     let skyDome: THREE.Mesh | null = null;
     let skyUniforms: { [key: string]: THREE.IUniform } | null = null;
+    let cinematic: IntroCinematic | null = null;   // 开场 CG 控制器（仅 intro 阶段存在）
 
     // ===== 游戏内部状态（普通变量，不响应式） =====
     const keys: InputKeys = { w: false, a: false, s: false, d: false, space: false, shift: false };
@@ -69,8 +73,11 @@ export function useGame(options: UseGameOptions) {
     let deathTimer = 0;
     let deathPending = false;
 
-    // 当前脚下平台（用于跟随 y 轴移动平台）
+    // 当前脚下平台（用于跟随移动平台）
     let currentGroundedPlatform: import('../game/types').Platform | null = null;
+    // 上一帧脚下平台的水平位置：用它与当前位置求差，把平台的位移带给玩家
+    let groundPrevX = 0;
+    let groundPrevZ = 0;
 
     // 当前模式
     const currentMode = shallowRef<GameMode>(DEFAULT_MODE);
@@ -596,6 +603,27 @@ export function useGame(options: UseGameOptions) {
             return;
         }
 
+        // 开场 CG：运镜完全交给 IntroCinematic，播完自动进入游戏
+        if (phase.value === 'intro') {
+            if (!cinematic) { phase.value = 'idle'; return; }
+            const done = cinematic.update(delta);
+            const st = cinematic.state;
+            introState.value = {
+                progress: st.progress,
+                subtitle: st.subtitle,
+                titleVisible: st.titleVisible,
+                fade: st.fade,
+            };
+            if (done) {
+                cinematic.dispose();
+                cinematic = null;
+                // CG 收尾的机位与游戏初始第三人称机位同向，交给跟随相机平滑推近即可
+                confirmCharacter();
+            }
+            renderer.value!.render(scene.value!, camera.value!);
+            return;
+        }
+
         // 角色选择阶段：展示模型，相机固定正面，角色缓慢旋转
         if (phase.value === 'character-select') {
             if (mixer) mixer.update(delta);
@@ -648,6 +676,24 @@ export function useGame(options: UseGameOptions) {
         // ===== 玩家移动 =====
         const pg = playerGroup.value!;
         const mode = currentMode.value;
+
+        // ===== 站在移动平台上：先把平台的位移带给玩家，再做自身移动与落地判定 =====
+        // 顺序很关键：若等落地判定后再补位移，玩家会滞后平台一帧，
+        // 平台较快时这一帧的位移可能超过落地判定的 ±0.3 容差，被误判成「走出边界」而掉落。
+        if (isGrounded && currentGroundedPlatform) {
+            const gp = currentGroundedPlatform;
+            if (platformSystem!.platforms.indexOf(gp) < 0) {
+                // 平台已被移除（消失 / 易碎 / 回收）
+                currentGroundedPlatform = null;
+                isGrounded = false;
+            } else {
+                pg.position.x += gp.x - groundPrevX;
+                pg.position.z += gp.z - groundPrevZ;
+                groundPrevX = gp.x;
+                groundPrevZ = gp.z;
+            }
+        }
+
         const forward = new THREE.Vector3(0, 0, -1);
         forward.applyQuaternion(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw));
         const right = new THREE.Vector3(1, 0, 0);
@@ -695,6 +741,12 @@ export function useGame(options: UseGameOptions) {
                 pg.position.y = landed.topY;
                 velY = 0;
                 isGrounded = true;
+                // 只有「换了一块平台」时才重置跟随基准。若每帧都重置成当前位置，
+                // 下一帧算出的平台位移恒为 0，玩家就会站在原地被平台滑走。
+                if (currentGroundedPlatform !== landed) {
+                    groundPrevX = landed.x;
+                    groundPrevZ = landed.z;
+                }
                 currentGroundedPlatform = landed;
                 playerCurrentLayer.value = landed.layer;  // 始终跟踪实际所在层
                 if (landed.layer > currentLayer.value) {
@@ -739,9 +791,10 @@ export function useGame(options: UseGameOptions) {
             currentGroundedPlatform = null;
         }
 
-        // 站在移动平台上时跟随平台移动（解决 velY=0 时穿越检测不触发的问题）
+        // 站在平台上时的兜底：脱离判定 + 吸附顶面（y 轴移动平台靠这条跟随升降）
+        // 水平跟随已在玩家移动之前完成，这里只处理「平台没了 / 自己走出边界 / 顶面升降」。
         if (isGrounded && currentGroundedPlatform) {
-            // 平台被移除或不在 xz 范围内时脱开
+            // 平台被移除时脱开
             if (platformSystem!.platforms.indexOf(currentGroundedPlatform) < 0) {
                 currentGroundedPlatform = null;
                 isGrounded = false;
@@ -752,7 +805,6 @@ export function useGame(options: UseGameOptions) {
                     currentGroundedPlatform = null;
                     isGrounded = false;
                 } else {
-                    // 吸附到平台顶部
                     pg.position.y = p.topY;
                 }
             }
@@ -836,6 +888,60 @@ export function useGame(options: UseGameOptions) {
 
     // ============== 7. 控制 API（给 UI 调用） ==============
 
+    // 播放开场 CG（选好角色、点「立即出发」后调用，播完自动进入游戏）
+    function playIntro(mode: GameMode = DEFAULT_MODE) {
+        if (!scene.value || !camera.value || !platformSystem || !lavaSystem) return;
+        currentMode.value = mode;
+        phase.value = 'intro';
+        if (skyDome) skyDome.visible = true;                 // CG 里能看到体积云天空
+
+        // 移除选人阶段补光（CG 用的是场景自身的光照）
+        if (characterFillLight && scene.value) {
+            scene.value.remove(characterFillLight);
+            characterFillLight = null;
+        }
+
+        // 主角登场：CG 全程可见，站在起始平台上做 idle（第一幕是岩浆仰拍，末幕俯冲落地同框）
+        const pg = playerGroup.value!;
+        pg.position.set(0, 0, 0);
+        pg.rotation.set(0, 0, 0);
+        pg.visible = true;
+        velY = 0;
+        isGrounded = true;
+        yaw = 0;
+        currentGroundedPlatform = null;
+        if (idleAction) {
+            [walkAction, runAction, jumpAction, deathAction].forEach(a => { if (a) a.fadeOut(0); });
+            idleAction.reset().fadeIn(0.2).play();
+            currentAnimation = 'idle';
+        }
+
+        // 清掉可能残留的按键（CG 期间乱按不应带进游戏）
+        const keys = input.keys as unknown as Record<string, boolean>;
+        for (const k of Object.keys(keys)) keys[k] = false;
+
+        introState.value = { progress: 0, subtitle: -1, titleVisible: false, fade: 1 };
+        cinematic?.dispose();
+        cinematic = new IntroCinematic(
+            scene.value, camera.value, platformSystem, lavaSystem, monsterSystem, IS_TOUCH_DEVICE,
+        );
+        cinematic.start(mode);
+
+        // 音乐与 CG 同时起，播完进游戏时不再重启
+        const bg = options.bgMusic.value;
+        if (bg) {
+            bg.currentTime = 0;
+            bg.volume = volume.value / 100;
+            bg.play().catch(err => console.warn('背景音乐播放失败：', err));
+        }
+    }
+
+    // 跳过开场 CG（任意键 / 点击，UI 层调用）
+    function skipIntro() {
+        if (phase.value !== 'intro' || !cinematic) return;
+        cinematic.skip();
+    }
+
     // 进入角色选择页面（点开始游戏后调用）
     function enterCharacterSelect(mode: GameMode = DEFAULT_MODE) {
         currentMode.value = mode;
@@ -888,9 +994,9 @@ export function useGame(options: UseGameOptions) {
         loadModel(char);
     }
 
-    // 确认选择，正式进入游戏
+    // 确认选择，正式进入游戏（选人页点「立即出发」→ 播 CG → CG 结束后调用）
     function confirmCharacter() {
-        if (phase.value !== 'character-select') return;
+        if (phase.value !== 'character-select' && phase.value !== 'intro') return;
         const mode = currentMode.value;
 
         // 移除选人阶段补光
@@ -899,9 +1005,10 @@ export function useGame(options: UseGameOptions) {
             characterFillLight = null;
         }
 
-        // 生成平台初始层
+        // 生成平台初始层（CG 里搭的预览塔身连同其上的怪物一起清掉，否则会留下悬空的幽灵怪物）
         if (platformSystem) {
             platformSystem.clear();
+            monsterSystem?.clear();
             platformSystem.setGenerator(mode.createGenerator(), mode);
             platformSystem.initInitialLayers();
         }
@@ -934,9 +1041,9 @@ export function useGame(options: UseGameOptions) {
 
         phase.value = 'playing';
         if (skyDome) skyDome.visible = true;
-        // 播放背景音乐
+        // 播放背景音乐（CG 开始时已起播，这里仅在没播时兜底，避免重启断音）
         const bg = options.bgMusic.value;
-        if (bg) {
+        if (bg && bg.paused) {
             bg.currentTime = 0;
             bg.volume = volume.value / 100;
             bg.play().catch(err => console.warn('背景音乐播放失败：', err));
@@ -1072,6 +1179,8 @@ export function useGame(options: UseGameOptions) {
         // 状态
         phase, currentLayer, bestLayer, volume,
         loadingProgress, loadError, currentMode, cameraMode, characterIndex,
+        // 开场 CG
+        introState, playIntro, skipIntro,
         // 引擎控制
         initScene, startGame, pauseGame, resumeGame,
         openSettings, closeSettings,

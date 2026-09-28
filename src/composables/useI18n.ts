@@ -9,10 +9,40 @@ const translations = {
     loadingFailed: { zh: '加载失败，点击重试', en: 'Load failed, tap to retry' },
     loadingProgress: { zh: '加载中...', en: 'Loading...' },
 
+    // IntroCinematic（开场 CG 字幕）
+    introLine1: { zh: '熔岩在脚下翻涌，它从未停止上升。', en: 'The lava churns below — it never stops rising.' },
+    introLine2: { zh: '唯一的路，是向上。', en: 'The only way out is up.' },
+    introLine3: { zh: '越过灰烬，越过雪线……', en: 'Past the ash, past the snowline…' },
+    introSkip: { zh: '按任意键跳过', en: 'Press any key to skip' },
+    introTitleSub: { zh: '熔岩攀登', en: 'Lava Ascent' },
+
+    // CharacterSelect（角色选择）
+    selectCharacter: { zh: '选择角色', en: 'Select Character' },
+    startNow: { zh: '立即出发', en: "Let's Go" },
+    prevChar: { zh: '上一个', en: 'Previous' },
+    nextChar: { zh: '下一个', en: 'Next' },
+
     // Hud（键位说明已移入设置面板，HUD 只保留鼠标锁定引导）
     tipLockMouse: { zh: '点击锁定鼠标', en: 'Click to lock mouse' },
     layerUnit: { zh: '层', en: 'Layer' },
     best: { zh: '最高：', en: 'Best: ' },
+
+    // LeaderboardPanel
+    lbEmpty: { zh: '暂无记录', en: 'No records yet' },
+    lbEmptyHint: { zh: '成为第一个上榜的玩家！', en: 'Be the first to get on the board!' },
+    lbRefresh: { zh: '刷新', en: 'Refresh' },
+    lbRefreshing: { zh: '刷新中...', en: 'Refreshing...' },
+    lbCount: { zh: '共 {n} 条记录', en: '{n} records' },
+    timeJustNow: { zh: '刚刚', en: 'just now' },
+    timeMinutesAgo: { zh: '{n}分钟前', en: '{n}m ago' },
+    timeHoursAgo: { zh: '{n}小时前', en: '{n}h ago' },
+    timeDaysAgo: { zh: '{n}天前', en: '{n}d ago' },
+
+    // 上榜昵称输入（App.vue）
+    nameInputTitle: { zh: '🎉 恭喜上榜！', en: '🎉 You made the board!' },
+    nameInputDesc: { zh: '你的成绩排在第 {rank} 名', en: 'You ranked #{rank}' },
+    nameInputPlaceholder: { zh: '输入昵称...', en: 'Enter your name...' },
+    nameInputConfirm: { zh: '确认并上榜', en: 'Submit' },
 
     // EscMenu
     dead: { zh: '你死了', en: 'You Died' },

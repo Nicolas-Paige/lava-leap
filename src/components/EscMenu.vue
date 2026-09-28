@@ -47,7 +47,7 @@ function isMenuVisible(): boolean {
 
                 <button class="ui-btn ui-btn-gold" @click="emit('leaderboard')">
                     <span class="ui-btn-icon">🏆</span>
-                    {{ tr('leaderboard') || '排行榜' }}
+                    {{ tr('leaderboard') }}
                 </button>
 
                 <button class="ui-btn ui-btn-subtle" @click="emit('settings')">

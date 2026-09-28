@@ -202,6 +202,18 @@ export class PlatformSystem {
         }
     }
 
+    // 生成 0~target 层（开场 CG 用：一次性搭出一段塔身做运镜背景）
+    // 与 initInitialLayers 的区别只是层数可指定，同样会触发 onLayerGenerated（怪物生成）
+    generateUpTo(target: number): void {
+        for (let l = 0; l <= target; l++) {
+            // clear() 会把 highestGeneratedLayer 归零，第 0 层仍需生成，故单独放行
+            if (l !== 0 && l <= this.highestGeneratedLayer) continue;
+            this.generateLayer(l);
+            this.highestGeneratedLayer = l;
+            if (l > 0) this.onLayerGenerated?.(l);
+        }
+    }
+
     // 每帧更新：移动平台 / 消失倒计时 / AABB 同步 / 破碎碎片
     update(delta: number): void {
         for (const p of this.platforms) {
@@ -389,8 +401,14 @@ export class PlatformSystem {
     }
 
     // 清除所有平台（重启用）
+    //
+    // 必须逐个触发 onPlatformRemoved：站在平台上的外部对象（怪物）持有的是 Platform 引用，
+    // 平台被清掉后引用对象的坐标就不再更新，怪物却仍被每帧摆回旧位置 ——
+    // 表现为「怪物飘在平台外」，而且还会继续参与碰撞判定（玩家在半空被看不见的怪撞死）。
+    // 这里做兜底，调用方即使忘了同步清理也不会产生幽灵对象。
     clear(): void {
         for (const p of this.platforms) {
+            this.onPlatformRemoved?.(p);
             this.scene.remove(p.mesh);
             p.mesh.geometry.dispose();
             this.disposePlatformMaterials(p);

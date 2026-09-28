@@ -37,7 +37,8 @@
 - **视线遮挡处理**：相机与玩家之间的平台自动半透明化，避免视野被挡
 - **冲刺跳跃**：Shift 冲刺时跳跃，跳得更高更远，是冲层关键
 - **第一 / 第三人称切换**：按 `V` 键（PC）或点 👁 按钮（移动端）切换视角；第一人称可上下左右自由观察，角色模型自动隐藏
-- **多角色选择**：开始游戏后进入选人页面，3D 实时展示角色模型，PC 左右箭头/键盘切换，移动端左右滑动切换，点击"立即出发"正式进入游戏；内置 5 个可选角色（机器人 + 4 个人形），均包含完整的 walk/run/idle/jump 动画
+- **开场 CG**：选好角色点\"立即出发\"后播放约 9 秒的五幕实时运镜（岩浆特写 → 后撤上升 → 螺旋攀升 → 拉远展现全塔 → 俯冲落地主角登场），带电影黑边与字幕，任意键 / 点击可跳过，播完直接接入游戏
+- **多角色选择**：开始游戏后进入选人页面，3D 实时展示角色模型，PC 左右箭头/键盘切换，移动端左右滑动切换，点击"立即出发"播放开场 CG 并进入游戏；内置 5 个可选角色（机器人 + 4 个人形），均包含完整的 walk/run/idle/jump 动画
 - **岩浆追击**：底部岩浆缓慢上升，碰到即死，迫使玩家持续向上（详见 [岩浆系统](#岩浆系统)）
 - **死亡菜单**：被岩浆烧死后弹出菜单，可选择重新开始或退出游戏
 - **背景音乐**：进入游戏自动播放，退出游戏自动暂停（循环播放）
@@ -270,13 +271,15 @@ lava-leap/
 │   │   └── platforms/          # 平台生成器
 │   │       ├── types.ts        # 平台类型与行为定义
 │   │       └── generators/     # 混合生成器 / 螺旋难度生成器
+│   │   └── IntroCinematic.ts   # 开场 CG 运镜（五幕相机轨迹 + 搭景，纯引擎层）
 │   ├── composables/            # Vue 组合式函数
-│   │   ├── useGame.ts          # 主引擎：场景 / 模型 / 主循环 / 控制 API / 选人流程
+│   │   ├── useGame.ts          # 主引擎：场景 / 模型 / 主循环 / 控制 API / 选人流程 / 开场 CG
 │   │   ├── useI18n.ts          # 国际化（中英文切换 + localStorage 持久化）
 │   │   ├── useKeyboardInput.ts # 键盘 + 鼠标输入（PC）
 │   │   └── useTouchInput.ts    # 触控输入（移动端）
 │   └── components/             # UI 组件
 │       ├── StartOverlay.vue    # 开始界面
+│       ├── IntroCinematic.vue  # 开场 CG 覆盖层（黑边 / 字幕 / 标题 / 跳过）
 │       ├── CharacterSelect.vue # 角色选择页面（3D展示 + 左右切换）
 │       ├── Hud.vue             # 层数显示 + 鼠标锁定提示（PC）
 │       ├── EscMenu.vue         # 暂停 / 死亡菜单
@@ -399,7 +402,8 @@ A 3D jumping mini-game built with Three.js + Vue 3. Pick your favorite character
 - **Line-of-sight occlusion**: Platforms between the camera and the player become semi-transparent to avoid blocking the view
 - **Dash jump**: Jumping while dashing with Shift makes you jump higher and farther, which is key to climbing layers
 - **First / Third person toggle**: Press `V` (PC) or tap the 👁 button (mobile) to switch camera views; first-person allows free look up/down/left/right, character model auto-hides
-- **Multi-character selection**: After tapping start, enter a character select screen with real-time 3D model preview. PC uses arrow buttons/keys, mobile uses left/right swipe. Tap "Let's Go" to officially start. 5 playable characters (1 robot + 4 humans), each with full walk/run/idle/jump animations
+- **Opening cinematic**: After picking a character and tapping "Let's Go", a ~9s five-shot real-time flythrough plays (lava close-up → pull back & rise → spiral ascent → pull back revealing the whole tower → dive down to the hero) with letterbox bars and subtitles. Any key or tap skips it; the game starts right after
+- **Multi-character selection**: After tapping start, enter a character select screen with real-time 3D model preview. PC uses arrow buttons/keys, mobile uses left/right swipe. Tap "Let's Go" to play the opening cinematic and start. 5 playable characters (1 robot + 4 humans), each with full walk/run/idle/jump animations
 - **Lava chase**: Bottom lava slowly rises and kills on contact, forcing the player to keep climbing (see [Lava System](#lava-system))
 - **Death menu**: A menu pops up after being burned by lava, offering options to restart or quit the game
 - **Background music**: Automatically plays when entering the game, pauses when exiting (loops)
@@ -632,13 +636,15 @@ lava-leap/
 │   │   └── platforms/          # Platform generators
 │   │       ├── types.ts        # Platform type & behavior definitions
 │   │       └── generators/     # Mixed generator / progressive difficulty generator
+│   │   └── IntroCinematic.ts   # Opening cinematic camera (5-shot path + scene setup, engine layer only)
 │   ├── composables/            # Vue composables
-│   │   ├── useGame.ts          # Main engine: scene / model / main loop / control API / character select flow
+│   │   ├── useGame.ts          # Main engine: scene / model / main loop / control API / character select flow / opening cinematic
 │   │   ├── useI18n.ts          # Internationalization (zh/en toggle + localStorage persistence)
 │   │   ├── useKeyboardInput.ts # Keyboard + mouse input (PC)
 │   │   └── useTouchInput.ts    # Touch input (mobile)
 │   └── components/             # UI components
 │       ├── StartOverlay.vue    # Start screen
+│       ├── IntroCinematic.vue  # Opening cinematic overlay (letterbox / subtitles / title / skip)
 │       ├── CharacterSelect.vue # Character select screen (3D preview + left/right switch)
 │       ├── Hud.vue             # Layer display + pointer-lock hint (PC)
 │       ├── EscMenu.vue         # Pause / death menu

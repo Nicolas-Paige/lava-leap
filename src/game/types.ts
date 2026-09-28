@@ -42,6 +42,7 @@ export interface InputKeys {
 // 游戏状态机
 export type GamePhase =
     | 'idle'               // 开始界面
+    | 'intro'              // 开场 CG（点开始后、进入选人前）
     | 'character-select'   // 角色选择页面
     | 'playing'            // 游戏中
     | 'paused'             // 暂停菜单
