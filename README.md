@@ -317,6 +317,7 @@ lava-leap/
 | `PLATFORM_THICK` | `0.5` | 平台厚度 |
 | `RANGE` | `11` | 平台水平随机范围（实际生效值，classic.mode.ts；螺旋布局需要更大场地） |
 | `PLATFORMS_PER_LAYER` | `4` | 每层平台数量 |
+| `START_PLATFORM_SIZE` | `14` | 起始平台（第 0 层）边长（缩小以便开局就能看到脚下岩浆） |
 | `MOVE_SPEED` | `7` | 玩家移动速度（实际生效值，classic.mode.ts；constants 中保留 8 为回落默认） |
 | `DIFFICULTY_CAP_LAYER` | `81` | 难度封顶层（到达即拉满，之后不再增长） |
 | `DIFFICULTY_CURVE_EXP` | `1.8` | 难度曲线指数（>1 表示前缓后陡） |
@@ -678,6 +679,7 @@ Core parameters are spread across [src/game/constants.ts](src/game/constants.ts)
 | `PLATFORM_THICK` | `0.5` | Platform thickness |
 | `RANGE` | `11` | Horizontal random range for platforms (effective value, classic.mode.ts; spiral layout needs a larger field) |
 | `PLATFORMS_PER_LAYER` | `4` | Number of platforms per layer |
+| `START_PLATFORM_SIZE` | `14` | Starting platform (layer 0) edge length — shrunk so the lava below is visible from the start |
 | `MOVE_SPEED` | `7` | Player movement speed (effective value, classic.mode.ts; constants retains 8 as fallback) |
 | `DIFFICULTY_CAP_LAYER` | `81` | Difficulty cap layer (maxed on arrival, then constant) |
 | `DIFFICULTY_CURVE_EXP` | `1.8` | Difficulty curve exponent (>1 = easy-front / steep-back) |

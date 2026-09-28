@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLATFORM_THICK } from './constants';
+import { PLATFORM_THICK, START_PLATFORM_SIZE } from './constants';
 import { getLayerTextures } from './textures';
 import type { Platform } from './types';
 import type { PlatformPlacement, PlatformType } from './platforms/types';
@@ -139,10 +139,10 @@ export class PlatformSystem {
 
     // 生成一整层平台（委托给 generator）
     generateLayer(layer: number): void {
-        // 第 0 层永远是大的起始平台
+        // 第 0 层是起始平台：不再用 50 的巨型实心平台，否则会把脚下岩浆完全遮住
         if (layer === 0) {
             this.createPlatform({
-                layer: 0, x: 0, z: 0, size: 50, type: 'normal',
+                layer: 0, x: 0, z: 0, size: START_PLATFORM_SIZE, type: 'normal',
             });
             return;
         }
@@ -423,13 +423,19 @@ export class PlatformSystem {
     }
 
     // 视线遮挡：相机与玩家之间的平台变透明
-    updateOpacity(camPos: THREE.Vector3, playerPos: THREE.Vector3): void {
+    // groundPlatform = 玩家当前站立的平台，**必须豁免**。
+    // 原因：传入的 playerPos 是玩家躯干（脚底 +1），而所站平台中心 (p.x, p.topY, p.z)
+    // 相对躯干只差 (dx, -1, dz)，几乎必然落在「相机→躯干」线段上（proj < viewLen 且垂距 < 3），
+    // 于是玩家自己脚下的地板被误判成遮挡物、淡到 0.25 —— 表现为"脚下的地板变透明、透出岩浆"。
+    // 该问题在起始平台缩小后才明显：以前第 0 层是 50×50，透过半透明地板看到的是绿色平台；
+    // 现在起始平台只有 14×14，散布在 ±11 范围内的低层平台下方很多直接就是岩浆。
+    updateOpacity(camPos: THREE.Vector3, playerPos: THREE.Vector3, groundPlatform?: Platform | null): void {
         const viewDir = playerPos.clone().sub(camPos);
         const viewLen = viewDir.length();
         viewDir.normalize();
 
         for (const p of this.platforms) {
-            if (p.layer === 0) {
+            if (p.layer === 0 || p === groundPlatform) {
                 this.setPlatformOpacity(p, 1.0);
                 continue;
             }

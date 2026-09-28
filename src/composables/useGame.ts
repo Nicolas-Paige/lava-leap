@@ -828,7 +828,8 @@ export function useGame(options: UseGameOptions) {
         // 视线遮挡
         const camPos = camera.value!.position.clone();
         const playerPos = new THREE.Vector3(pg.position.x, pg.position.y + 1, pg.position.z);
-        platformSystem!.updateOpacity(camPos, playerPos);
+        // 传入当前站立平台，让遮挡逻辑豁免它（否则自己脚下的地板会被误判为遮挡物而变透明）
+        platformSystem!.updateOpacity(camPos, playerPos, currentGroundedPlatform);
 
         renderer.value!.render(scene.value!, camera.value!);
     }
