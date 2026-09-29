@@ -38,7 +38,7 @@
 - **冲刺跳跃**：Shift 冲刺时跳跃，跳得更高更远，是冲层关键
 - **第一 / 第三人称切换**：按 `V` 键（PC）或点 👁 按钮（移动端）切换视角；第一人称可上下左右自由观察，角色模型自动隐藏
 - **开场 CG**：选好角色点\"立即出发\"后播放约 9 秒的五幕实时运镜（岩浆特写 → 后撤上升 → 螺旋攀升 → 拉远展现全塔 → 俯冲落地主角登场），带电影黑边与字幕，任意键 / 点击可跳过，播完直接接入游戏
-- **多角色选择**：开始游戏后进入选人页面，3D 实时展示角色模型，PC 左右箭头/键盘切换，移动端左右滑动切换，点击"立即出发"播放开场 CG 并进入游戏；内置 5 个可选角色（机器人 + 4 个人形），均包含完整的 walk/run/idle/jump 动画
+- **多角色选择**：开始游戏后进入选人页面，3D 实时展示角色模型，PC 左右箭头/键盘切换，移动端左右滑动切换，点击"立即出发"播放开场 CG 并进入游戏；内置 2 个 PBR 写实角色（Kane Valer / Lena Vayne），均包含完整的 walk/run/idle/jump/death 动画
 - **岩浆追击**：底部岩浆缓慢上升，碰到即死，迫使玩家持续向上（详见 [岩浆系统](#岩浆系统)）
 - **死亡菜单**：被岩浆烧死后弹出菜单，可选择重新开始或退出游戏
 - **背景音乐**：进入游戏自动播放，退出游戏自动暂停（循环播放）
@@ -204,7 +204,7 @@ edge-functions/
 ```json
 {
   "records": [
-    { "name": "玩家昵称", "layer": 15, "characterId": "robot", "timestamp": 1700000000000 }
+    { "name": "玩家昵称", "layer": 15, "characterId": "kane-valer", "timestamp": 1700000000000 }
   ],
   "updatedAt": 1700000000000
 }
@@ -240,15 +240,13 @@ lava-leap/
 │       └── leaderboard/
 │           └── check.ts        # /api/leaderboard/check（GET 校验）
 ├── assets/                     # 游戏资源
-│   └── bg-music-8bit.wav            # 背景音乐
-├── models/                     # 角色模型
-│   ├── RobotExpressive.glb     # 机器人
-│   ├── Man.glb                 # 休闲男
-│   ├── Man in Long Sleeves.glb # 长袖男
-│   ├── Man in Suit.glb         # 西装男
-│   ├── Man-fjHyMd5Wxw.glb     # 运动男
-│   ├── Xbot.glb
-│   └── miku.glb
+│   ├── bg-music-8bit.wav            # 背景音乐
+│   └── *_original.glb               # 角色模型原始大文件备份（不参与构建）
+├── models/                     # 角色模型（位于 public/models）
+│   ├── Role/
+│   │   ├── KaneValer.glb        # Kane Valer（PBR，3.6MB）
+│   │   └── LenaVayne.glb       # Lena Vayne（PBR，3.0MB）
+│   └── Monsters/               # 怪物模型
 ├── src/
 │   ├── main.ts                 # 应用挂载入口
 │   ├── App.vue                 # 顶层组件（canvas + audio + 子组件编排）
@@ -403,7 +401,7 @@ A 3D jumping mini-game built with Three.js + Vue 3. Pick your favorite character
 - **Dash jump**: Jumping while dashing with Shift makes you jump higher and farther, which is key to climbing layers
 - **First / Third person toggle**: Press `V` (PC) or tap the 👁 button (mobile) to switch camera views; first-person allows free look up/down/left/right, character model auto-hides
 - **Opening cinematic**: After picking a character and tapping "Let's Go", a ~9s five-shot real-time flythrough plays (lava close-up → pull back & rise → spiral ascent → pull back revealing the whole tower → dive down to the hero) with letterbox bars and subtitles. Any key or tap skips it; the game starts right after
-- **Multi-character selection**: After tapping start, enter a character select screen with real-time 3D model preview. PC uses arrow buttons/keys, mobile uses left/right swipe. Tap "Let's Go" to play the opening cinematic and start. 5 playable characters (1 robot + 4 humans), each with full walk/run/idle/jump animations
+- **Multi-character selection**: After tapping start, enter a character select screen with real-time 3D model preview. PC uses arrow buttons/keys, mobile uses left/right swipe. Tap "Let's Go" to play the opening cinematic and start. 2 PBR-realistic playable characters (Kane Valer / Lena Vayne), each with full walk/run/idle/jump/death animations
 - **Lava chase**: Bottom lava slowly rises and kills on contact, forcing the player to keep climbing (see [Lava System](#lava-system))
 - **Death menu**: A menu pops up after being burned by lava, offering options to restart or quit the game
 - **Background music**: Automatically plays when entering the game, pauses when exiting (loops)
@@ -569,7 +567,7 @@ Data is stored under `leaderboard:all`. The value is JSON:
 ```json
 {
   "records": [
-    { "name": "PlayerName", "layer": 15, "characterId": "robot", "timestamp": 1700000000000 }
+    { "name": "PlayerName", "layer": 15, "characterId": "kane-valer", "timestamp": 1700000000000 }
   ],
   "updatedAt": 1700000000000
 }
@@ -605,15 +603,13 @@ lava-leap/
 │       └── leaderboard/
 │           └── check.ts        # /api/leaderboard/check (GET check)
 ├── assets/                     # Game assets
-│   └── bg-music-8bit.wav            # Background music
-├── models/                     # Character models
-│   ├── RobotExpressive.glb     # Robot
-│   ├── Man.glb                 # Casual man
-│   ├── Man in Long Sleeves.glb # Long-sleeve man
-│   ├── Man in Suit.glb         # Suit man
-│   ├── Man-fjHyMd5Wxw.glb     # Sporty man
-│   ├── Xbot.glb
-│   └── miku.glb
+│   ├── bg-music-8bit.wav            # Background music
+│   └── *_original.glb               # Original (uncompressed) character models, not built
+├── models/                     # Character models (under public/models)
+│   ├── Role/
+│   │   ├── KaneValer.glb        # Kane Valer (PBR, 3.6MB)
+│   │   └── LenaVayne.glb       # Lena Vayne (PBR, 3.0MB)
+│   └── Monsters/               # Monster models
 ├── src/
 │   ├── main.ts                 # App mount entry
 │   ├── App.vue                 # Top-level component (canvas + audio + child orchestration)

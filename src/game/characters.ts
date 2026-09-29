@@ -2,15 +2,11 @@
 // 仅包含拥有 walk / run / idle / jump 四种必需动画的模型
 
 // 模型已迁移至 public/models，通过运行时绝对路径加载
-const robotModelUrl = '/models/Role/RobotExpressive.glb';
-const manModelUrl = '/models/Role/Man.glb';
-const manSleevesModelUrl = '/models/Role/ManInLongSleeves.glb';
-const manSuitModelUrl = '/models/Role/ManInSuit.glb';
-const manOtherModelUrl = '/models/Role/Man-fjHyMd5Wxw.glb';
-const womanModelUrl = '/models/Role/Woman.glb';
-const womanCasualModelUrl = '/models/Role/WomanCasual.glb';
-const womanDressModelUrl = '/models/Role/WomanInDress.glb';
-const womanTankTopModelUrl = '/models/Role/WomanInTankTop.glb';
+// 两个角色均为 PBR 写实风格：模型自带 Idle / walk / run / jump / death 五个片段。
+// 原始导出为 4096² PNG 贴图（34~38MB），已离线压缩为 2048² JPEG 并重建 GLB
+// （原始大文件备份在 assets/ 下，不参与构建）
+const kaneValerModelUrl = '/models/Role/KaneValer.glb';
+const lenaVayneModelUrl = '/models/Role/LenaVayne.glb';
 
 // 动作信息
 export interface ActionInfo {
@@ -28,29 +24,9 @@ const REQUIRED_ACTIONS: ActionInfo[] = [
     { key: 'jump',  name: '跳跃', icon: '🦘', required: true },
 ];
 
-// 机器人额外动作
-const ROBOT_EXTRA_ACTIONS: ActionInfo[] = [
-    { key: 'death',    name: '死亡',   icon: '💀', required: false },
-    { key: 'punch',    name: '出拳',   icon: '👊', required: false },
-    { key: 'dance',    name: '跳舞',   icon: '💃', required: false },
-    { key: 'wave',     name: '挥手',   icon: '👋', required: false },
-    { key: 'thumbsup', name: '点赞',   icon: '👍', required: false },
-    { key: 'no',       name: '摇头',   icon: '🙅', required: false },
-    { key: 'yes',      name: '点头',   icon: '🙆', required: false },
-    { key: 'sitting',  name: '坐下',   icon: '🪑', required: false },
-    { key: 'standing', name: '站立',   icon: '🧍', required: false },
-    { key: 'walkjump', name: '走跳',   icon: '🚶‍♂️', required: false },
-];
-
-// 人形模型额外动作（4个 Man 模型动画完全一致）
-const HUMAN_EXTRA_ACTIONS: ActionInfo[] = [
-    { key: 'death',       name: '死亡',   icon: '💀', required: false },
-    { key: 'punch',       name: '出拳',   icon: '👊', required: false },
-    { key: 'clapping',    name: '鼓掌',   icon: '👏', required: false },
-    { key: 'swordslash',  name: '挥剑',   icon: '⚔️', required: false },
-    { key: 'runningjump', name: '跑跳',   icon: '🏃‍♂️', required: false },
-    { key: 'sitting',     name: '坐下',   icon: '🪑', required: false },
-    { key: 'standing',    name: '站立',   icon: '🧍', required: false },
+// PBR 写实角色动作：模型仅有必需四动作 + 死亡，无额外表情动作
+const PBR_EXTRA_ACTIONS: ActionInfo[] = [
+    { key: 'death', name: '死亡', icon: '💀', required: false },
 ];
 
 export interface Character {
@@ -65,6 +41,17 @@ export interface Character {
     typeColor: string;           // 类型标签颜色（css 颜色）
     actions: ActionInfo[];       // 全部动作列表
     featured: string[];          // 特色动作 key（卡片上高亮展示）
+    /**
+     * 动画原生步态（用 three 实测得到，模型局部单位）：
+     *   speed     —— 动画自带的位移速度（局部单位/秒）
+     *   stepRate  —— 动画自带的步频（步/秒）
+     * 运行期据此反算 timeScale：需求 = 移动速度 / (speed × scale)，
+     * 再用 stepRate 限制上限，避免为了追上速度把动画播成快进。
+     */
+    gait?: {
+        walk: { speed: number; stepRate: number };
+        run: { speed: number; stepRate: number };
+    };
 }
 
 function buildActions(extra: ActionInfo[]): ActionInfo[] {
@@ -73,121 +60,46 @@ function buildActions(extra: ActionInfo[]): ActionInfo[] {
 
 export const CHARACTERS: Character[] = [
     {
-        id: 'robot',
-        name: '机器人',
-        icon: '🤖',
-        desc: '经典机器人，动画最丰富',
-        modelUrl: robotModelUrl,
-        scale: 0.3,
-        type: 'robot',
-        typeLabel: '机器人',
-        typeColor: '#4a90e2',
-        actions: buildActions(ROBOT_EXTRA_ACTIONS),
-        featured: ['dance', 'wave', 'thumbsup', 'no', 'yes'],
+        // PBR 写实男：原始 37.9MB（三张 4096² PNG），已离线压缩至 3.6MB。
+        // 骨骼为 mixamo 28 骨，导出姿态即为正立、面朝 +Z、脚底 y≈0，无需额外修正。
+        // scale 由 three 实测 Idle 身高 1.063 反算：1.768 / 1.063 ≈ 1.66
+        id: 'kane-valer',
+        name: 'Kane Valer',
+        icon: '🧑',
+        desc: 'PBR 写实材质，动作精简',
+        modelUrl: kaneValerModelUrl,
+        scale: 1.66,
+        type: 'human',
+        typeLabel: '凯恩・瓦勒',
+        typeColor: '#5b8def',
+        actions: buildActions(PBR_EXTRA_ACTIONS),
+        featured: [],
+        // 实测：walk 1.21s / 2 步（步频 1.65 步/秒），run 4.13s / 12 步（步频 2.91 步/秒）
+        gait: {
+            walk: { speed: 0.696, stepRate: 1.65 },
+            run: { speed: 1.804, stepRate: 2.91 },
+        },
     },
     {
-        id: 'man',
-        name: '休闲男',
-        icon: '🧍',
-        desc: '休闲装扮，含挥剑动作',
-        modelUrl: manModelUrl,
-        scale: 0.38,
+        // PBR 写实女：模型原始 34MB（三张 4096² PNG），已离线压缩至 3MB；
+        // 并修正了导出时错误的 90° 旋转（原模型是躺倒的）与脚底偏移。
+        // scale 由实测身高 1.154 反算：1.768 / 1.154 ≈ 1.53
+        id: 'lena-vayne',
+        name: 'Lena Vayne',
+        icon: '👸',
+        desc: 'PBR 写实材质，动作精简',
+        modelUrl: lenaVayneModelUrl,
+        scale: 1.53,
         type: 'human',
-        typeLabel: '人形',
-        typeColor: '#e2a04a',
-        actions: buildActions(HUMAN_EXTRA_ACTIONS),
-        featured: ['swordslash', 'clapping', 'runningjump'],
-    },
-    {
-        id: 'man-sleeves',
-        name: '长袖男',
-        icon: '🧥',
-        desc: '长袖装扮，含挥剑动作',
-        modelUrl: manSleevesModelUrl,
-        scale: 0.38,
-        type: 'human',
-        typeLabel: '人形',
-        typeColor: '#e2a04a',
-        actions: buildActions(HUMAN_EXTRA_ACTIONS),
-        featured: ['swordslash', 'clapping', 'runningjump'],
-    },
-    {
-        id: 'man-suit',
-        name: '西装男',
-        icon: '🕴️',
-        desc: '西装革履，含挥剑动作',
-        modelUrl: manSuitModelUrl,
-        scale: 0.38,
-        type: 'human',
-        typeLabel: '人形',
-        typeColor: '#e2a04a',
-        actions: buildActions(HUMAN_EXTRA_ACTIONS),
-        featured: ['swordslash', 'clapping', 'runningjump'],
-    },
-    {
-        id: 'man-other',
-        name: '运动男',
-        icon: '🏃',
-        desc: '运动装扮，含挥剑动作',
-        modelUrl: manOtherModelUrl,
-        scale: 0.38,
-        type: 'human',
-        typeLabel: '人形',
-        typeColor: '#e2a04a',
-        actions: buildActions(HUMAN_EXTRA_ACTIONS),
-        featured: ['swordslash', 'clapping', 'runningjump'],
-    },
-    {
-        id: 'woman',
-        name: '女性角色',
-        icon: '👩',
-        desc: '女性基础模型，动画丰富',
-        modelUrl: womanModelUrl,
-        scale: 0.38,
-        type: 'human',
-        typeLabel: '人形',
-        typeColor: '#d4649a',
-        actions: buildActions(HUMAN_EXTRA_ACTIONS),
-        featured: ['swordslash', 'clapping', 'runningjump'],
-    },
-    {
-        id: 'woman-casual',
-        name: '休闲女',
-        icon: '👚',
-        desc: '休闲装扮女性角色',
-        modelUrl: womanCasualModelUrl,
-        scale: 0.38,
-        type: 'human',
-        typeLabel: '人形',
-        typeColor: '#d4649a',
-        actions: buildActions(HUMAN_EXTRA_ACTIONS),
-        featured: ['swordslash', 'clapping', 'runningjump'],
-    },
-    {
-        id: 'woman-dress',
-        name: '裙装女',
-        icon: '👗',
-        desc: '优雅裙装女性角色',
-        modelUrl: womanDressModelUrl,
-        scale: 0.38,
-        type: 'human',
-        typeLabel: '人形',
-        typeColor: '#d4649a',
-        actions: buildActions(HUMAN_EXTRA_ACTIONS),
-        featured: ['swordslash', 'clapping', 'runningjump'],
-    },
-    {
-        id: 'woman-tanktop',
-        name: '背心女',
-        icon: '🎽',
-        desc: '运动背心女性角色',
-        modelUrl: womanTankTopModelUrl,
-        scale: 0.38,
-        type: 'human',
-        typeLabel: '人形',
-        typeColor: '#d4649a',
-        actions: buildActions(HUMAN_EXTRA_ACTIONS),
-        featured: ['swordslash', 'clapping', 'runningjump'],
+        typeLabel: '莉娜・维恩',
+        typeColor: '#b06ab3',
+        actions: buildActions(PBR_EXTRA_ACTIONS),
+        featured: [],
+        // 实测：walk 1.21s / 2 步（步频 1.65 步/秒），run 4.13s / 12 步（步频 2.91 步/秒）
+        gait: {
+            walk: { speed: 0.715, stepRate: 1.65 },
+            run: { speed: 1.850, stepRate: 2.91 },
+        },
     },
 ];
 

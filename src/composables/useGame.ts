@@ -22,6 +22,19 @@ export const IS_TOUCH_DEVICE =
     typeof navigator !== 'undefined' &&
     (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
 
+// 步频上限（步/秒）：倍率再高动画就变成快进了，宁可留一点滑步
+const MAX_WALK_STEP_RATE = 5.5;
+const MAX_RUN_STEP_RATE = 6.0;
+// 死亡动画完整播一遍的目标时长（秒）：据此反推播放倍率，既不拖节奏也不会被截断
+const DEATH_ANIM_TARGET = 1.8;
+// 死亡动画的起播位置（占动画时长比例）：mixamo 类动作前段多为"站着踉跄"，
+// 真正的倒地发生在后半段，从中段起播才能一死亡就看到倒地
+const DEATH_START_RATIO = 0.45;
+// 死亡下沉开始时机（占死亡总时长比例）：倒地动作完成后才沉入岩浆
+const DEATH_SINK_START_RATIO = 0.75;
+// 贴地曲线采样点数（沿死亡动画均匀采样）
+const DEATH_CURVE_SAMPLES = 13;
+
 export interface UseGameOptions {
     canvas: Ref<HTMLCanvasElement | null>;
     bgMusic: Ref<HTMLAudioElement | null>;
@@ -65,6 +78,7 @@ export function useGame(options: UseGameOptions) {
     let selectedCharacterId = DEFAULT_CHARACTER_ID;
     let currentCharacterIndex = 0;
 
+
     // 死亡动画
     let deathModel: THREE.Object3D | null = null;
     let deathMaterials: DeathMaterialRecord[] = [];
@@ -72,6 +86,13 @@ export function useGame(options: UseGameOptions) {
     let deathSinkTarget = 0;  // 死亡下沉目标高度
     let deathTimer = 0;
     let deathPending = false;
+    let deathDuration = DEATH_DURATION;  // 本次死亡总时长（= 死亡动画完整播完所需时间）
+    let deathSinkToLava = true;          // 岩浆死亡才下沉并隐藏模型
+    let deathTimeScale = 1;              // 死亡动画播放倍率（由动画时长反推）
+    // 死亡贴地曲线：沿死亡动画均匀采样"身体最低点相对站立时的抬升量"（模型局部单位）。
+    // 部分 mixamo 死亡动画缺根骨位移，跪/倒后整个人悬在空中，需要按此曲线把模型压回地面。
+    let deathGroundCurve: number[] = [];
+    let deathSkinMesh: THREE.SkinnedMesh | null = null;
 
     // 当前脚下平台（用于跟随移动平台）
     let currentGroundedPlatform: import('../game/types').Platform | null = null;
@@ -440,6 +461,14 @@ export function useGame(options: UseGameOptions) {
                     deathAction.setLoop(THREE.LoopOnce, 1);
                     deathAction.clampWhenFinished = true;
                 }
+                // 按移动速度/滞空时间校正播放倍率（消除走路滑步）
+                applyGaitTimeScale(character, currentMode.value);
+
+                // 采样死亡动作的身体高度曲线（用于把缺根骨位移的动作压回地面）
+                deathSkinMesh = null;
+                model.traverse((child: any) => { if (child.isSkinnedMesh && !deathSkinMesh) deathSkinMesh = child; });
+                buildDeathGroundCurve(character.scale);
+
                 idleAction.play();
 
                 deathModel = model;
@@ -501,6 +530,135 @@ export function useGame(options: UseGameOptions) {
         if (actions[currentAnimation]) actions[currentAnimation].fadeOut(fade);
         if (actions[target]) actions[target].reset().fadeIn(fade).play();
         currentAnimation = target;
+    }
+
+    // ============== 4.1 按移动速度反算动画播放倍率（消除"太空步"）==============
+    // 模型动画自带的位移速度远低于游戏移动速度（角色 1.77m 高却要跑 7m/s），
+    // 完全匹配需要 6~7 倍速、步频 10 步/秒，看着像快进。这里取折中：
+    // 先算"跟上位移所需的倍率"，再用步频上限卡住，保证腿动得自然。
+    function applyGaitTimeScale(character: Character, mode: GameMode) {
+        const g = character.gait;
+        const setScale = (
+            action: any,
+            gait: { speed: number; stepRate: number } | undefined,
+            targetSpeed: number,
+            maxStepRate: number,
+        ) => {
+            if (!action || !gait || gait.speed <= 0 || gait.stepRate <= 0) return;
+            const nativeSpeed = gait.speed * character.scale;  // 动画原生速度 → 世界单位/秒
+            const need = targetSpeed / nativeSpeed;            // 完全跟上位移所需的倍率
+            const cap = maxStepRate / gait.stepRate;           // 步频上限允许的倍率
+            action.setEffectiveTimeScale(Math.max(1, Math.min(need, cap)));
+        };
+        setScale(walkAction, g?.walk, mode.moveSpeed, MAX_WALK_STEP_RATE);
+        setScale(runAction, g?.run, mode.moveSpeed * mode.dashMultiplier, MAX_RUN_STEP_RATE);
+
+        // 跳跃：让动作在典型滞空时间内播完，避免落地了动作才播到一半
+        if (jumpAction) {
+            const airTime = 2 * mode.jumpPower / Math.abs(mode.gravity);
+            const dur = jumpAction.getClip().duration;
+            if (airTime > 0 && dur > 0) {
+                jumpAction.setEffectiveTimeScale(Math.max(1, Math.min(dur / airTime, 2.5)));
+            }
+        }
+        // 死亡：按目标时长反推倍率，保证倒地动作能被完整播完（而非播到一半就被岩浆淹没）
+        // 只计起播点之后的片段（前段是踉跄站姿，不进入"播完"的计时）
+        deathTimeScale = 1;
+        if (deathAction) {
+            const dur = deathAction.getClip().duration * (1 - DEATH_START_RATIO);
+            if (dur > 0) {
+                deathTimeScale = Math.max(1, Math.min(dur / DEATH_ANIM_TARGET, 4));
+                deathAction.setEffectiveTimeScale(deathTimeScale);
+            }
+        }
+    }
+
+    /**
+     * 采样死亡动画每一帧的"身体最低点"，生成贴地补偿曲线。
+     * 不少 mixamo 死亡动画缺根骨位移（Hips 只有旋转没有下沉），跪下/倒下后整个人悬在空中，
+     * 这里用与 GPU 蒙皮一致的公式（bind → Σ w·boneMat → bindInverse → matrixWorld）
+     * 算出真实顶点高度，再按曲线把模型压回地面。存的是世界单位（已含角色缩放），运行时直接减。
+     */
+    function buildDeathGroundCurve(scale: number) {
+        deathGroundCurve = [];
+        const sk = deathSkinMesh;
+        if (!sk || !mixer || !deathAction || !idleAction) return;
+
+        const geo = sk.geometry;
+        const pos = geo.attributes.position;
+        const sIdx = geo.attributes.skinIndex;
+        const sWt = geo.attributes.skinWeight;
+        if (!pos || !sIdx || !sWt) return;
+
+        const bones = sk.skeleton.bones;
+        const boneInv = sk.skeleton.boneInverses;
+        const bind = sk.bindMatrix;
+        const bindInv = sk.bindMatrixInverse;
+        const v = new THREE.Vector3();
+        const tmp = new THREE.Vector3();
+        const bm = new THREE.Matrix4();
+        const step = Math.max(1, Math.floor(pos.count / 3000));
+
+        const lowestY = () => {
+            let min = Infinity;
+            for (let i = 0; i < pos.count; i += step) {
+                v.fromBufferAttribute(pos, i).applyMatrix4(bind);
+                let x = 0, y = 0, z = 0;
+                for (let k = 0; k < 4; k++) {
+                    const w = k === 0 ? sWt.getX(i) : k === 1 ? sWt.getY(i) : k === 2 ? sWt.getZ(i) : sWt.getW(i);
+                    if (w === 0) continue;
+                    const bi = k === 0 ? sIdx.getX(i) : k === 1 ? sIdx.getY(i) : k === 2 ? sIdx.getZ(i) : sIdx.getW(i);
+                    const bone = bones[bi];
+                    if (!bone) continue;
+                    bm.multiplyMatrices(bone.matrixWorld, boneInv[bi]);
+                    tmp.copy(v).applyMatrix4(bm).multiplyScalar(w);
+                    x += tmp.x; y += tmp.y; z += tmp.z;
+                }
+                v.set(x, y, z).applyMatrix4(bindInv).applyMatrix4(sk.matrixWorld);
+                if (v.y < min) min = v.y;
+            }
+            return min;
+        };
+
+        // 采样期间把玩家组挪到原点，避免把当前站位算进基线
+        const pg = playerGroup.value!;
+        const savedPos = pg.position.clone();
+        pg.position.set(0, 0, 0);
+
+        const sampleAt = (action: THREE.AnimationAction, t: number) => {
+            action.time = t;
+            mixer!.update(0);
+            pg.updateMatrixWorld(true);
+            sk.skeleton.update();
+            return lowestY();
+        };
+
+        mixer.stopAllAction();
+        idleAction.play();
+        const base = sampleAt(idleAction, 0);   // 站立基线：脚底贴地
+        idleAction.stop();
+
+        const clip = deathAction.getClip();
+        deathAction.reset().play();
+        for (let i = 0; i < DEATH_CURVE_SAMPLES; i++) {
+            const t = (i / (DEATH_CURVE_SAMPLES - 1)) * clip.duration;
+            const y = sampleAt(deathAction, t);
+            deathGroundCurve.push(Math.max(0, y - base));
+        }
+        deathAction.stop();
+
+        pg.position.copy(savedPos);
+        pg.updateMatrixWorld(true);
+    }
+
+    /** 按死亡动画进度（0~1，整段动画的归一化时间）取贴地补偿量（世界单位） */
+    function deathGroundDrop(p: number): number {
+        const n = deathGroundCurve.length;
+        if (n < 2) return 0;
+        const x = Math.min(Math.max(p, 0), 1) * (n - 1);
+        const i = Math.floor(x);
+        if (i >= n - 1) return deathGroundCurve[n - 1];
+        return deathGroundCurve[i] + (deathGroundCurve[i + 1] - deathGroundCurve[i]) * (x - i);
     }
 
     // ============== 4.5 音效系统（Web Audio API 程序化生成 8-bit 音效）==============
@@ -570,17 +728,24 @@ export function useGame(options: UseGameOptions) {
     // ============== 5. 死亡 ==============
     function onPlayerDeath(sinkToLava: boolean = true) {
         if (deathTimer > 0 || deathPending) return;  // 避免重复触发
-        deathTimer = DEATH_DURATION;
+        // 总时长 = 起播点之后那一段动作完整播完所需时间（无动画时退回固定时长）
+        deathDuration = deathAction && deathTimeScale > 0
+            ? Math.max(DEATH_DURATION, deathAction.getClip().duration * (1 - DEATH_START_RATIO) / deathTimeScale)
+            : DEATH_DURATION;
+        deathTimer = deathDuration;
         deathStartY = playerGroup.value!.position.y;
         // 岩浆死亡：沉入岩浆面；怪物死亡：原地倒下不下沉
+        deathSinkToLava = sinkToLava;
         deathSinkTarget = sinkToLava ? lavaSystem!.y - 0.3 : deathStartY;
         velY = 0;  // 停止重力下坠
         isGrounded = false;
         // 淡出所有普通动作
         [walkAction, runAction, idleAction, jumpAction].forEach(a => { if (a) a.fadeOut(0.1); });
-        // 播放模型自带的死亡动画
+        // 播放模型自带的死亡动画：从倒地动作开始播（跳过前段的踉跄站姿）
         if (deathAction) {
-            deathAction.reset().fadeIn(0.1).play();
+            deathAction.reset();
+            deathAction.time = deathAction.getClip().duration * DEATH_START_RATIO;
+            deathAction.fadeIn(0.1).play();
         }
         playerGroup.value!.visible = true;
         playDeathSound();
@@ -624,12 +789,11 @@ export function useGame(options: UseGameOptions) {
             return;
         }
 
-        // 角色选择阶段：展示模型，相机固定正面，角色缓慢旋转
+        // 角色选择阶段：展示模型，相机固定正面，角色保持静止（不自转）
         if (phase.value === 'character-select') {
             if (mixer) mixer.update(delta);
             const pg = playerGroup.value!;
-            // 角色缓慢自转展示
-            pg.rotation.y += delta * 0.5;
+            pg.rotation.y = 0;   // 正面朝 +Z，正对相机
             // 相机近距离正面，看全身
             camera.value!.position.set(0, 1.5, 3.2);
             camera.value!.lookAt(0, 0.9, 0);
@@ -649,21 +813,30 @@ export function useGame(options: UseGameOptions) {
             lavaSystem!.updateTime(delta);
             if (mixer) mixer.update(delta);
 
-            const deathElapsed = DEATH_DURATION - deathTimer;
-            const tNorm = Math.min(deathElapsed / DEATH_DURATION, 1.0);
+            const deathElapsed = deathDuration - deathTimer;
+            const tNorm = Math.min(deathElapsed / deathDuration, 1.0);
 
-            // 下沉到目标高度（岩浆面 / 平台内）
-            playerGroup.value!.position.y = deathStartY + (deathSinkTarget - deathStartY) * tNorm;
+            // 下沉到目标高度：倒地动作播完前留在原地，之后才沉入岩浆
+            const sinkT = tNorm <= DEATH_SINK_START_RATIO
+                ? 0
+                : Math.pow((tNorm - DEATH_SINK_START_RATIO) / (1 - DEATH_SINK_START_RATIO), 2);
+            // 贴地补偿：缺根骨位移的死亡动作会把人悬在空中，按曲线压回地面。
+            // 岩浆死亡时随下沉进度淡出（人已经沉进岩浆里）；怪物死亡原地倒下，全程保持贴地
+            const clipP = DEATH_START_RATIO + tNorm * (1 - DEATH_START_RATIO);
+            const drop = deathGroundDrop(clipP) * (deathSinkToLava ? 1 - sinkT : 1);
+            playerGroup.value!.position.y = deathStartY
+                + (deathSinkTarget - deathStartY) * sinkT
+                - drop;
 
-            // 下沉过半后隐藏模型（被岩浆吞没）
-            if (deathElapsed >= DEATH_DURATION * 0.5 && playerGroup.value!.visible) {
+            // 岩浆死亡：动作播完、沉入岩浆后才隐藏；怪物死亡原地倒下，不隐藏
+            if (deathSinkToLava && tNorm >= 1 && playerGroup.value!.visible) {
                 playerGroup.value!.visible = false;
             }
 
             if (deathTimer <= 0) {
                 deathTimer = 0;
-                // 停止死亡动画，重置模型姿态
-                if (deathAction) deathAction.fadeOut(0);
+                // 保留死亡动画最后一帧（已 LoopOnce + clampWhenFinished），
+                // 死亡菜单背景里角色维持倒地姿态；重开时 restartGame() 统一切回 idle
                 if (deathModel) deathModel.rotation.set(0, 0, 0);
                 openDeathMenu();
             }
