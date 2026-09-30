@@ -197,7 +197,7 @@ export class LavaSystem {
 
     /**
      * 每帧更新：上升 + 推进 shader 时间
-     * playerLayer 传入时，岩浆速度按层数线性加速（0.8 → 1.8 / 81 层），之后封顶。
+     * playerLayer 传入时，岩浆速度按层数线性加速（1.1 → 2.6 / 81 层），之后封顶。
      */
     update(delta: number, playerLayer?: number): void {
         if (this.enabled) {

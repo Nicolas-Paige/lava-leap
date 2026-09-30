@@ -126,7 +126,11 @@ npm run preview
 - **纹理**：通过 CDN 加载官方 lava 纹理（`textures/lava/cloud.png` 噪声图 + `textures/lava/lavatile.jpg` 熔岩贴图），配合 `uvScale` 在大平面上平铺；多源回退（threejs.org → GitHub raw → canvas fallback）
 - **流动**：纹理 UV 基于时间与 cloud 噪声做双路偏移（T1 / T2），再通过 `color * (p*2) + (color² - 0.1)` 混合，通道溢出形成高温发光带
 - **红光预警**：岩浆点光源照亮附近平台与角色，岩浆逼近时视觉更紧张
-- **行为**：岩浆面以恒定速度向上推进，玩家脚底低于岩浆面时触发死亡
+- **行为**：岩浆面持续上升，速度随层数从 `1.1` 线性加速到 `2.6`（81 层封顶），玩家脚底低于岩浆面时触发死亡。
+  层高 3.0，因此「每层必须快于」的盈亏平衡时间从开局的 2.73 秒收紧到封顶后的 1.15 秒。
+  顶速刻意压在熟练玩家持续爬升速度（约 2.7 单位/秒）之下：高手能一直甩开岩浆，但甩不开多少，
+  一旦犹豫几秒就会被吃掉。3000 层爬升仿真：强 / 中 / 弱三档玩家（每层 1.11 / 1.43 / 2.30 秒）
+  分别 走完 3000 层 / 第 135 层 / 第 35 层 被追上
 - **死亡流程**：播放角色自带的死亡动画，同时下沉被岩浆吞没（约 1 秒）→ 弹出"你死了"菜单 → 玩家选择"重新开始"（回到起点、岩浆归位、保留最高层数）或"退出游戏"（回开始界面、暂停音乐）
 
 实现位于 [src/game/LavaSystem.ts](src/game/LavaSystem.ts)。
@@ -319,10 +323,10 @@ lava-leap/
 | `RANGE` | `11` | 平台水平随机范围（实际生效值，classic.mode.ts；螺旋布局需要更大场地） |
 | `PLATFORMS_PER_LAYER` | `4` | 每层平台数量 |
 | `START_PLATFORM_SIZE` | `14` | 起始平台（第 0 层）边长（缩小以便开局就能看到脚下岩浆） |
-| `MOVE_SPEED` | `7` | 玩家移动速度（实际生效值，classic.mode.ts；constants 中保留 8 为回落默认） |
+| `MOVE_SPEED` | `6` | 玩家移动速度（实际生效值，classic.mode.ts；constants 中保留 8 为回落默认） |
 | `DIFFICULTY_CAP_LAYER` | `81` | 难度封顶层（到达即拉满，之后不再增长） |
 | `DIFFICULTY_CURVE_EXP` | `1.8` | 难度曲线指数（>1 表示前缓后陡） |
-| `DINO_CHASE_SPEED` | `3.5` | 怪物恒定追击速度（玩家移速一半） |
+| `DINO_CHASE_SPEED` | `3.0` | 怪物恒定追击速度（玩家移速一半） |
 | `DASH_JUMP_MULTIPLIER` | `1.2` | 冲刺跳跃力倍率 |
 | `GRAVITY` | `-25` | 重力加速度 |
 | `JUMP_POWER` | `13` | 普通跳跃力 |
@@ -334,7 +338,9 @@ lava-leap/
 | `PITCH_MIN` | `-π/3` | 第一人称最低俯视角（-60°） |
 | `PITCH_MAX` | `π/3` | 第一人称最高仰视角（+60°） |
 | `LAVA_SIZE` | `100` | 岩浆平面边长 |
-| `LAVA_RISE_SPEED` | `0.8` | 岩浆每秒上升速度 |
+| `LAVA_RISE_SPEED` | `1.1` | 岩浆起步上升速度（每秒） |
+| `LAVA_RISE_SPEED_MAX` | `2.6` | 岩浆速度上限（随层数线性加速到此值，略低于熟练玩家爬升速度） |
+| `LAVA_SPEED_RAMP_LAYER` | `81` | 到该层时岩浆速度达到上限（与难度封顶层一致） |
 | `LAVA_INITIAL_Y` | `-8` | 岩浆起始高度（低于第 0 层） |
 | `LAVA_DEATH_MARGIN` | `0.1` | 玩家脚底低于岩浆面多少即判定死亡 |
 | `DEATH_DURATION` | `1.0` | 死亡动画时长（秒） |
@@ -489,7 +495,10 @@ A slowly rising lava surface at the bottom — the main failure condition.
 - **Textures**: Loads official lava textures via CDN (`textures/lava/cloud.png` noise map + `textures/lava/lavatile.jpg` lava tile), combined with `uvScale` for tiling on large planes; multi-source fallback (threejs.org → GitHub raw → canvas fallback)
 - **Flow**: Texture UV is offset in dual paths (T1 / T2) based on time and cloud noise, then mixed via `color * (p*2) + (color² - 0.1)`, with channel overflow forming high-temperature glowing bands
 - **Red light warning**: The lava point light source illuminates nearby platforms and the character, making the visual more intense as the lava approaches
-- **Behavior**: The lava surface advances upward at a constant speed, triggering death when the player's feet drop below the lava surface
+- **Behavior**: The lava surface keeps rising, ramping linearly from `1.1` to `2.6` (cap at layer 81), triggering death when the player's feet drop below the lava surface.
+  With a layer height of 3.0, the break-even "must be faster than" time per layer tightens from 2.73s at the start to 1.15s at the cap.
+  The cap is deliberately kept just under a skilled player's sustained climb rate (~2.7 units/s): good players can keep outrunning it, but only barely — a few seconds of hesitation and it catches them.
+  Calibrated on a 3000-layer climb simulation: strong / average / weak players (1.11 / 1.43 / 2.30 s per layer) are caught at layer 3000+ (never) / 135 / 35
 - **Death process**: Plays the character's native death animation while sinking into the lava (about 1 second) → "You Died" menu pops up → Player chooses "Restart" (return to start, reset lava, keep highest layer) or "Quit Game" (return to start screen, pause music)
 
 Implementation in [src/game/LavaSystem.ts](src/game/LavaSystem.ts).
@@ -682,10 +691,10 @@ Core parameters are spread across [src/game/constants.ts](src/game/constants.ts)
 | `RANGE` | `11` | Horizontal random range for platforms (effective value, classic.mode.ts; spiral layout needs a larger field) |
 | `PLATFORMS_PER_LAYER` | `4` | Number of platforms per layer |
 | `START_PLATFORM_SIZE` | `14` | Starting platform (layer 0) edge length — shrunk so the lava below is visible from the start |
-| `MOVE_SPEED` | `7` | Player movement speed (effective value, classic.mode.ts; constants retains 8 as fallback) |
+| `MOVE_SPEED` | `6` | Player movement speed (effective value, classic.mode.ts; constants retains 8 as fallback) |
 | `DIFFICULTY_CAP_LAYER` | `81` | Difficulty cap layer (maxed on arrival, then constant) |
 | `DIFFICULTY_CURVE_EXP` | `1.8` | Difficulty curve exponent (>1 = easy-front / steep-back) |
-| `DINO_CHASE_SPEED` | `3.5` | Constant monster chase speed (half the player's speed) |
+| `DINO_CHASE_SPEED` | `3.0` | Constant monster chase speed (half the player's speed) |
 | `DASH_JUMP_MULTIPLIER` | `1.2` | Dash jump force multiplier |
 | `GRAVITY` | `-25` | Gravity acceleration |
 | `JUMP_POWER` | `13` | Normal jump force |
@@ -697,7 +706,9 @@ Core parameters are spread across [src/game/constants.ts](src/game/constants.ts)
 | `PITCH_MIN` | `-π/3` | First-person minimum look-down angle (-60°) |
 | `PITCH_MAX` | `π/3` | First-person maximum look-up angle (+60°) |
 | `LAVA_SIZE` | `100` | Lava plane edge length |
-| `LAVA_RISE_SPEED` | `0.8` | Lava rise speed per second |
+| `LAVA_RISE_SPEED` | `1.1` | Lava starting rise speed (per second) |
+| `LAVA_RISE_SPEED_MAX` | `2.6` | Lava speed cap (kept just under a skilled player climb rate) |
+| `LAVA_SPEED_RAMP_LAYER` | `81` | Layer at which lava speed reaches the cap (difficulty cap layer) |
 | `LAVA_INITIAL_Y` | `-8` | Lava starting height (below layer 0) |
 | `LAVA_DEATH_MARGIN` | `0.1` | Distance below lava surface that triggers death |
 | `DEATH_DURATION` | `1.0` | Death animation duration (seconds) |

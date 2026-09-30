@@ -33,15 +33,16 @@ const DINO_MAX_SPAWN_GAP = 4;          // 连续空这么多层后必刷一只
 const DINO_CHANCE_EASY = 0.15;
 const DINO_CHANCE_HARD = 0.55;
 const DINO_MODEL_URL = '/models/Monsters/Dino.glb';
-const DINO_PATROL_SPEED = 0.4;   // 巡逻速度（单位/秒）—— 缓慢悠闲
+const DINO_PATROL_SPEED = 0.34;  // 巡逻速度（单位/秒）—— 缓慢悠闲（随玩家移速同步下调）
 const DINO_PATROL_MARGIN = 1;  // 距平台边缘的保底距离（不贴边走）
 // 发现玩家的距离。原来 20，而螺旋布局下同层簇直径只有 ~13 —— 等于一落到同层必定被发现，
 // 「巡逻」状态永远跑不到，三段状态机空转。收到 8 后，远处的怪会安静巡逻，
 // 玩家可以选择绕开还是硬闯，这才是决策。
 const DINO_DETECT_RANGE = 8;
 // 追击速度。原来 1.5，而玩家移动 8 / 冲刺 12.8 —— 差 5 倍多，怪物永远追不上，
-// 只能当会动的障碍物。现在取玩家移速的一半（7 → 3.5）：仍然追不上满速玩家，
+// 只能当会动的障碍物。后取玩家移速的一半（7 → 3.5）：仍然追不上满速玩家，
 // 但玩家要在平台上停留、走位、等消失平台时会被顶到，形成实质压迫。
+// 玩家移速降到 6 后同步下调到 3.0，保持「玩家速度一半」的关系。
 //
 // 恒定而不随难度提升，有两个原因：
 // 1) 怪物被约束在平台内 size/2 - margin = 1.5 的半径里（3×3 见方），
@@ -50,8 +51,8 @@ const DINO_DETECT_RANGE = 8;
 // 2) 速度是隐形属性，玩家看不出这只怪比 30 层前那只快，只会觉得手感飘。
 //    难度增长交给看得见的维度：怪物变密（间隔 4→2 层）、平台变险、岩浆变快。
 //   玩家移速下调时此处要同步下调，保持「玩家速度一半」的关系，否则怪物会相对变强。
-const DINO_CHASE_SPEED = 3.5;
-const DINO_RETURN_SPEED = 0.6; // 返回巡逻路线速度（单位/秒，略快于巡逻）
+const DINO_CHASE_SPEED = 3.0;
+const DINO_RETURN_SPEED = 0.5; // 返回巡逻路线速度（单位/秒，略快于巡逻）
 
 export class MonsterSystem {
     private readonly scene: THREE.Scene;

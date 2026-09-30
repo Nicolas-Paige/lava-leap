@@ -22,9 +22,10 @@ export const IS_TOUCH_DEVICE =
     typeof navigator !== 'undefined' &&
     (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
 
-// 步频上限（步/秒）：倍率再高动画就变成快进了，宁可留一点滑步
-const MAX_WALK_STEP_RATE = 5.5;
-const MAX_RUN_STEP_RATE = 6.0;
+// 步频上限（步/秒）：倍率再高动画就变成快进了，宁可留一点滑步。
+// 5.5/6.0 时腿动明显偏快（真人走路约 2、慢跑 3~4），随移速 7→6 一起下调到 4.0/4.6。
+const MAX_WALK_STEP_RATE = 4.0;
+const MAX_RUN_STEP_RATE = 4.6;
 // 死亡动画完整播一遍的目标时长（秒）：据此反推播放倍率，既不拖节奏也不会被截断
 const DEATH_ANIM_TARGET = 1.8;
 // 死亡动画的起播位置（占动画时长比例）：mixamo 类动作前段多为"站着踉跄"，
@@ -533,9 +534,10 @@ export function useGame(options: UseGameOptions) {
     }
 
     // ============== 4.1 按移动速度反算动画播放倍率（消除"太空步"）==============
-    // 模型动画自带的位移速度远低于游戏移动速度（角色 1.77m 高却要跑 7m/s），
-    // 完全匹配需要 6~7 倍速、步频 10 步/秒，看着像快进。这里取折中：
+    // 模型动画自带的位移速度远低于游戏移动速度（角色 1.77m 高却要跑 6~9m/s），
+    // 完全匹配需要 5~7 倍速、步频 10 步/秒，看着像快进。这里取折中：
     // 先算"跟上位移所需的倍率"，再用步频上限卡住，保证腿动得自然。
+    // 上限越低腿动越自然、滑步越明显；调 moveSpeed 后记得复核这里的两个上限。
     function applyGaitTimeScale(character: Character, mode: GameMode) {
         const g = character.gait;
         const setScale = (
