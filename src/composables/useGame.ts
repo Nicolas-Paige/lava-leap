@@ -35,6 +35,53 @@ const DEATH_START_RATIO = 0.45;
 const DEATH_SINK_START_RATIO = 0.75;
 // 贴地曲线采样点数（沿死亡动画均匀采样）
 const DEATH_CURVE_SAMPLES = 13;
+// 待机动作幅度保留比例（1 = 原样，0 = 完全静止）。
+// 生成器 Idle 常见幅度：女角色左右摆 15.5cm、男角色脚底起伏 4.7cm，站着不动像在飘；
+// 收缩到 35% 后分别降到 4.6cm / 1.7cm。
+// 现役两个角色已用 scripts/fix-character-glb.mjs 烘焙进 GLB，故全局默认 1（不处理），
+// 避免二次压缩。新模型批量接入时可以把这里改成 0.35 做临时兜底，
+// 或按角色配 Character.idleMotionScale；正式修法仍是离线烘焙。
+const IDLE_MOTION_SCALE = 1;
+
+/**
+ * 收缩待机动作的幅度：把每个关键帧朝该通道的首帧姿态插值。
+ *
+ * 生成器的 Idle 往往带着整段身体位移（本作实测：女角色左右摆 15.7cm、男角色脚底起伏 4.7cm），
+ * 站着不动时看着像在飘。Hips 并没有位移通道，晃动来自骨骼旋转，
+ * 所以只能压缩旋转/位移关键帧本身，而不是改根节点。
+ *
+ * 首帧即末帧（循环动画），压缩首尾仍然重合，不会破坏循环衔接。
+ *
+ * @param scale 保留比例：1 = 原样，0 = 完全静止
+ */
+function dampenIdleMotion(clip: THREE.AnimationClip, scale: number) {
+    if (scale >= 1 || scale < 0) return;
+    const q = new THREE.Quaternion();
+    const qRef = new THREE.Quaternion();
+    const qOut = new THREE.Quaternion();
+    for (const track of clip.tracks) {
+        const n = track.times.length;
+        const stride = track.values.length / n;
+        if (stride !== 4 && stride !== 3) continue;   // 只处理四元数与三维向量
+        const v = track.values;
+        if (stride === 4) {
+            qRef.fromArray(v, 0);
+            for (let i = 0; i < n; i++) {
+                q.fromArray(v, i * 4);
+                qOut.copy(qRef).slerp(q, scale);   // 从首帧姿态朝该关键帧移动 scale 比例
+                qOut.toArray(v, i * 4);
+            }
+        } else {
+            const rx = v[0], ry = v[1], rz = v[2];
+            for (let i = 0; i < n; i++) {
+                for (let c = 0; c < 3; c++) {
+                    const ref = c === 0 ? rx : c === 1 ? ry : rz;
+                    v[i * 3 + c] = ref + (v[i * 3 + c] - ref) * scale;
+                }
+            }
+        }
+    }
+}
 
 export interface UseGameOptions {
     canvas: Ref<HTMLCanvasElement | null>;
@@ -444,6 +491,10 @@ export function useGame(options: UseGameOptions) {
                 const walkAnim = find(/walk|walking/);
                 const runAnim = find(/run|running/);
                 const idleAnim = find(/idle|standing/);
+                // 待机动作幅度收缩：仅对未离线烘焙的模型生效（见 Character.idleMotionScale）。
+                // 现役两个角色的 Idle 已烘焙进 GLB，这里留空即跳过，避免二次压缩。
+                const idleScale = character.idleMotionScale ?? IDLE_MOTION_SCALE;
+                if (idleAnim && idleScale < 1) dampenIdleMotion(idleAnim, idleScale);
                 const jumpAnim = find(/jump|jumping/);
                 const deathAnim = find(/death|dying/);
 
@@ -642,10 +693,18 @@ export function useGame(options: UseGameOptions) {
 
         const clip = deathAction.getClip();
         deathAction.reset().play();
+        // 曲线必须**单调不减**：原始采样是"全身最低点 - 站立基线"，而这个最低点
+        // 在倒地过程中会换部位（站立时是脚、蜷缩时是翘起的脚尖、躺平后是背/手），
+        // 于是曲线先升后降（Kane 峰值 15.3cm → 末尾 4.5cm）。若直接用，
+        // 补偿量在倒地后期被撤销，模型会被重新抬起来——看起来就是"飞一下"。
+        // 取累积最大值后：一旦压下去就不再抬，代价只是后期某个接触点略陷进平台
+        // （约 6cm，死亡是 1.8 秒的瞬间且随即沉入岩浆，看不出来）。
+        let acc = 0;
         for (let i = 0; i < DEATH_CURVE_SAMPLES; i++) {
             const t = (i / (DEATH_CURVE_SAMPLES - 1)) * clip.duration;
             const y = sampleAt(deathAction, t);
-            deathGroundCurve.push(Math.max(0, y - base));
+            acc = Math.max(acc, y - base);
+            deathGroundCurve.push(Math.max(0, acc));
         }
         deathAction.stop();
 
@@ -822,13 +881,17 @@ export function useGame(options: UseGameOptions) {
             const sinkT = tNorm <= DEATH_SINK_START_RATIO
                 ? 0
                 : Math.pow((tNorm - DEATH_SINK_START_RATIO) / (1 - DEATH_SINK_START_RATIO), 2);
-            // 贴地补偿：缺根骨位移的死亡动作会把人悬在空中，按曲线压回地面。
-            // 岩浆死亡时随下沉进度淡出（人已经沉进岩浆里）；怪物死亡原地倒下，全程保持贴地
+            // 贴地补偿：缺根骨位移的死亡动作会把人悬在空中（实测躺平后悬空 0.71 世界单位），
+            // 按曲线把模型压回地面。
             const clipP = DEATH_START_RATIO + tNorm * (1 - DEATH_START_RATIO);
-            const drop = deathGroundDrop(clipP) * (deathSinkToLava ? 1 - sinkT : 1);
-            playerGroup.value!.position.y = deathStartY
-                + (deathSinkTarget - deathStartY) * sinkT
-                - drop;
+            const drop = deathGroundDrop(clipP);
+            // 倒地后的高度（已贴地）与沉入岩浆的高度，取**更低者**。
+            // 不能写成 `startY + 下沉 - drop*(1-sink淡出)`：贴地补偿（0.711）远大于
+            // 沉入岩浆的深度（0.4），一边撤销补偿一边下沉，净效果是向上弹 0.31 —— 就是"飞一下"。
+            // 取 min 保证整个死亡过程只往下走；岩浆死亡时人继续沉，怪物死亡原地倒下。
+            const standY = deathStartY - drop;
+            const sinkY = deathStartY + (deathSinkTarget - deathStartY) * sinkT;
+            playerGroup.value!.position.y = Math.min(standY, sinkY);
 
             // 岩浆死亡：动作播完、沉入岩浆后才隐藏；怪物死亡原地倒下，不隐藏
             if (deathSinkToLava && tNorm >= 1 && playerGroup.value!.visible) {

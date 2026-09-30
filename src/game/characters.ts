@@ -52,6 +52,13 @@ export interface Character {
         walk: { speed: number; stepRate: number };
         run: { speed: number; stepRate: number };
     };
+    /**
+     * 待机动作幅度保留比例（1 = 原样，0 = 完全静止）。**默认 1 = 不处理**。
+     * 两个现役角色的 Idle 已用 `scripts/fix-character-glb.mjs` 烘焙进 GLB，
+     * 所以这里留空即可；新模型若待机漂移明显，优先离线烘焙（对所有加载方生效），
+     * 只想临时兜底时才填这个字段（0.35 左右）。
+     */
+    idleMotionScale?: number;
 }
 
 function buildActions(extra: ActionInfo[]): ActionInfo[] {
